@@ -39,6 +39,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/auth/senha", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { senhaAtual, novaSenha } = req.body;
+
+      if (!senhaAtual || !novaSenha) {
+        return res.status(400).send("Senha atual e nova senha são obrigatórias");
+      }
+
+      if (novaSenha.length < 6) {
+        return res.status(400).send("Nova senha deve ter no mínimo 6 caracteres");
+      }
+
+      const usuario = db.prepare("SELECT * FROM usuarios WHERE id = ?").get(req.usuario!.id) as Usuario | undefined;
+
+      if (!usuario) {
+        return res.status(404).send("Usuário não encontrado");
+      }
+
+      const senhaValida = await bcrypt.compare(senhaAtual, usuario.senha);
+      if (!senhaValida) {
+        return res.status(401).send("Senha atual incorreta");
+      }
+
+      const novaSenhaHash = await bcrypt.hash(novaSenha, 10);
+      db.prepare("UPDATE usuarios SET senha = ? WHERE id = ?").run(novaSenhaHash, usuario.id);
+
+      res.json({ message: "Senha alterada com sucesso" });
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
   app.get("/api/partes", authMiddleware, (req: AuthRequest, res) => {
     try {
       const partes = db.prepare("SELECT * FROM partes ORDER BY id DESC").all() as Parte[];
@@ -69,12 +101,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      const emailExistente = db.prepare("SELECT id FROM usuarios WHERE email = ?").get(email);
+      if (emailExistente) {
+        return res.status(400).send("Já existe um usuário com este email");
+      }
+
       const result = db.prepare(
         `INSERT INTO partes (tipo, nome, email, telefone, rg, orgao_emissor, cpf) 
          VALUES (?, ?, ?, ?, ?, ?, ?)`
       ).run(tipo, nome, email, telefone || null, rg || null, orgaoEmissor || null, cpf);
 
       const parteId = result.lastInsertRowid as number;
+
+      const senhaInicial = "senha123";
+      const hashedSenha = await bcrypt.hash(senhaInicial, 10);
+      db.prepare(
+        `INSERT INTO usuarios (email, senha, nome, papel, parte_id) VALUES (?, ?, ?, ?, ?)`
+      ).run(email, hashedSenha, nome, tipo, parteId);
 
       if (files && files.length > 0) {
         for (const file of files) {
@@ -465,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/parcelas", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
+  app.post("/api/parcelas", authMiddleware, upload.single("comprovante"), async (req: AuthRequest, res) => {
     try {
       const imovel = db.prepare("SELECT id FROM imoveis LIMIT 1").get() as { id: number } | undefined;
       if (!imovel) {
@@ -599,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/alugueis", authMiddleware, requireProprietario, async (req: AuthRequest, res) => {
+  app.post("/api/alugueis", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const imovel = db.prepare("SELECT id, valor_aluguel FROM imoveis LIMIT 1").get() as { id: number; valor_aluguel: number } | undefined;
       if (!imovel) {
@@ -698,7 +741,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/condominios", authMiddleware, requireProprietario, async (req: AuthRequest, res) => {
+  app.post("/api/condominios", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const imovel = db.prepare("SELECT id FROM imoveis LIMIT 1").get() as { id: number } | undefined;
       if (!imovel) {

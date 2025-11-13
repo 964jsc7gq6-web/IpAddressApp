@@ -14,7 +14,9 @@ export function initDatabase() {
       email TEXT NOT NULL UNIQUE,
       senha TEXT NOT NULL,
       nome TEXT NOT NULL,
-      papel TEXT NOT NULL CHECK(papel IN ('Proprietário', 'Comprador'))
+      papel TEXT NOT NULL CHECK(papel IN ('Proprietário', 'Comprador')),
+      parte_id INTEGER,
+      FOREIGN KEY (parte_id) REFERENCES partes(id) ON DELETE SET NULL
     );
 
     CREATE TABLE IF NOT EXISTS arquivos (

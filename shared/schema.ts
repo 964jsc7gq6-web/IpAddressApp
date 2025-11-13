@@ -10,9 +10,14 @@ export const usuarios = sqliteTable("usuarios", {
   senha: text("senha").notNull(),
   nome: text("nome").notNull(),
   papel: text("papel").notNull(), // "Proprietário" ou "Comprador"
+  parte_id: integer("parte_id"), // Relacionamento com a tabela partes
 });
 
-export const insertUsuarioSchema = createInsertSchema(usuarios).omit({ id: true });
+export const insertUsuarioSchema = createInsertSchema(usuarios).omit({ id: true }).extend({
+  email: z.string().email("Email inválido"),
+  senha: z.string().min(6, "Senha deve ter no mínimo 6 caracteres"),
+  papel: z.enum(["Proprietário", "Comprador"]),
+});
 export type InsertUsuario = z.infer<typeof insertUsuarioSchema>;
 export type Usuario = typeof usuarios.$inferSelect;
 

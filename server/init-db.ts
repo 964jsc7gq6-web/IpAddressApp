@@ -4,22 +4,21 @@ import bcrypt from "bcrypt";
 export async function initializeDatabase() {
   initDatabase();
 
+  // Adicionar coluna parte_id se não existir
+  try {
+    db.exec(`ALTER TABLE usuarios ADD COLUMN parte_id INTEGER`);
+  } catch (e) {
+    // Coluna já existe
+  }
+
   const existingUsers = db.prepare("SELECT COUNT(*) as count FROM usuarios").get() as any;
   
   if (existingUsers.count === 0) {
     console.log("🌱 Seeding initial data...");
-    
+
     const hashedSenha = await bcrypt.hash("senha123", 10);
 
-    db.prepare(
-      `INSERT INTO usuarios (email, senha, nome, papel) VALUES (?, ?, ?, ?)`
-    ).run("proprietario@teste.com", hashedSenha, "João Silva", "Proprietário");
-
-    db.prepare(
-      `INSERT INTO usuarios (email, senha, nome, papel) VALUES (?, ?, ?, ?)`
-    ).run("comprador@teste.com", hashedSenha, "Maria Santos", "Comprador");
-
-    db.prepare(
+    const parteProprietarioResult = db.prepare(
       `INSERT INTO partes (tipo, nome, email, telefone, cpf, rg, orgao_emissor) 
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
@@ -31,8 +30,9 @@ export async function initializeDatabase() {
       "12.345.678-9",
       "SSP/SP"
     );
+    const parteProprietarioId = parteProprietarioResult.lastInsertRowid as number;
 
-    db.prepare(
+    const parteCompradorResult = db.prepare(
       `INSERT INTO partes (tipo, nome, email, telefone, cpf, rg, orgao_emissor) 
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
@@ -44,6 +44,15 @@ export async function initializeDatabase() {
       "98.765.432-1",
       "SSP/SP"
     );
+    const parteCompradorId = parteCompradorResult.lastInsertRowid as number;
+
+    db.prepare(
+      `INSERT INTO usuarios (email, senha, nome, papel, parte_id) VALUES (?, ?, ?, ?, ?)`
+    ).run("carlos@email.com", hashedSenha, "Carlos Eduardo Silva", "Proprietário", parteProprietarioId);
+
+    db.prepare(
+      `INSERT INTO usuarios (email, senha, nome, papel, parte_id) VALUES (?, ?, ?, ?, ?)`
+    ).run("ana@email.com", hashedSenha, "Ana Paula Oliveira", "Comprador", parteCompradorId);
 
     const result = db.prepare(
       `INSERT INTO imoveis (nome, endereco, valor_imovel, valor_aluguel) 
@@ -98,8 +107,8 @@ export async function initializeDatabase() {
 
     console.log("✅ Database seeded successfully!");
     console.log("\n📋 Test credentials:");
-    console.log("   Proprietário: proprietario@teste.com / senha123");
-    console.log("   Comprador: comprador@teste.com / senha123\n");
+    console.log("   Proprietário: carlos@email.com / senha123");
+    console.log("   Comprador: ana@email.com / senha123\n");
   } else {
     console.log("✅ Database already initialized");
   }
