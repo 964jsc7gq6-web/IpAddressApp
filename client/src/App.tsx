@@ -57,7 +57,12 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route path="/:rest*">
+      <Route path="/">
+        <ProtectedRoute>
+          <AppContent />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/:rest+">
         <ProtectedRoute>
           <AppContent />
         </ProtectedRoute>
