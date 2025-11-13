@@ -1,0 +1,144 @@
+Quero que você crie uma aplicação completa chamada **App Ipê** em um único repositório, com **deploy simples** (apenas ambiente de produção):
+
+- Um único servidor **Node.js + Express** que:
+  - expõe a API REST em `/api/...`
+  - em produção também serve o frontend estático (build do React) em `/`
+- Frontend **React + Vite + TypeScript**, SPA responsiva, pronta para mobile.
+- **PWA** com manifest e service worker (offline básico).
+- Banco de dados **SQLite** em arquivo, com script de seed.
+- Linguagem e mensagens em **português (pt-BR)** em código, textos da UI e dados de exemplo.
+
+## Arquitetura e scripts
+
+- Estrutura sugerida:
+  - `server/` → Express, rotas, DB, uploads
+  - `web/` → React + Vite (frontend)
+- Em desenvolvimento:
+  - `npm run dev:api` → sobe API
+  - `npm run dev:web` → sobe Vite com proxy para `/api`
+- Em produção:
+  - `npm run build:web` → gera `web/dist`
+  - `npm run start` → Express serve `/api` + arquivos estáticos de `web/dist`
+- Incluir script de seed do SQLite (`npm run seed`).
+
+## Autenticação e papéis
+
+- Login com email/senha usando **JWT**.
+- Usuários possuem campo `papel` com dois valores possíveis:
+  - **Proprietário** (admin)
+  - **Comprador**
+- Middleware para validar token JWT.
+- **Permissões**:
+  - Proprietário: acesso total, pode criar/editar imóvel, partes e alterar valores financeiros.
+  - Comprador: acesso somente leitura aos dados (imóvel, partes, financeiro, dashboards). Não pode alterar dados nem cadastrar registros.
+
+## Entidades e regras de negócio
+
+Usar tabelas em SQLite (nomes em pt-BR):
+
+### Partes (pessoas)
+
+- Tabela `partes` com campos:
+  - id, tipo (`"Proprietário"` ou `"Comprador"`), nome, email, telefone, rg, orgao_emissor, cpf.
+- CRUD completo via API e telas.
+- Upload de anexos:
+  - **Até 3 arquivos** por parte.
+  - Tamanho máximo **5 MB por arquivo**.
+  - Tipos permitidos: `pdf, zip, jpeg, jpg, png, doc, docx, rtf`.
+- Validar tipo e tamanho no backend e mostrar mensagens amigáveis no frontend.
+
+### Imóvel (apenas UM)
+
+- Tabela `imoveis` com campos:
+  - id, nome/descricao, endereco, valor_imovel, valor_aluguel,
+    contrato_arquivo_id, foto_capa_id.
+- **Regra do imóvel único**:
+  - O sistema só pode ter **um único imóvel**.
+  - Bloquear qualquer tentativa de criar um segundo imóvel (tanto na API quanto na UI: esconder/desabilitar botão “Novo Imóvel” quando já existir).
+- CRUD completo para o único imóvel.
+- Uploads do imóvel:
+  - 1 arquivo de **contrato** (tipos: `pdf, doc, docx, rtf`).
+  - 1 **foto de capa** (imagem: `jpeg, jpg, png`).
+  - Até **10 anexos gerais** (tipos: `pdf, zip, jpeg, jpg, png, doc, docx, rtf`), com tamanho máximo **20 MB por arquivo**.
+- Guardar metadados de arquivos em tabela `arquivos` (id, nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id).
+
+### Parcelas (controle financeiro de venda)
+
+- Tabela `parcelas` com campos:
+  - id, imovel_id, numero, vencimento (data), valor, pago (boolean), pago_em (data), comprovante_id.
+- Sempre vinculadas ao **único imóvel** (campo imovel_id).
+- Regras:
+  - Campo **`numero`**:
+    - auto-incrementado com base na última parcela inserida (ex.: última foi 5, próxima será 6).
+  - Campo **`vencimento`**:
+    - gerado automaticamente como **dia 15 do mês seguinte** ao último vencimento cadastrado.
+    - Na primeira parcela, usar a regra base (por exemplo, próximo dia 15).
+  - Campo **`valor`**:
+    - editável pelo Proprietário.
+- Comprovante de pagamento:
+  - **Apenas 1 arquivo** por parcela.
+  - Tamanho máximo **2 MB**.
+  - Tipos permitidos: `pdf, jpg, jpeg, png`.
+
+### Aluguéis
+
+- Tabela `aluguéis` com campos:
+  - id, imovel_id, mes (1–12), ano, valor, pago (boolean), pago_em (data), comprovante_id.
+- Sempre vinculados ao único imóvel.
+- Regras:
+  - Campos **`mes`** e **`ano`**:
+    - auto-incrementados sequencialmente com base no último registro:
+      - após dezembro (`mes = 12`) → próximo registro deve ser mês 1 e ano + 1.
+  - Campo **`valor`**:
+    - **somente leitura** e sempre obtido do campo `valor_aluguel` do imóvel.
+- Comprovante:
+  - Apenas 1 arquivo, máx 2 MB, tipos `pdf/jpg/jpeg/png`.
+
+### Condomínio
+
+- Tabela `condominios` com campos:
+  - id, imovel_id, mes, ano, valor, pago, pago_em, comprovante_id.
+- Regras:
+  - Campos **`mes`** e **`ano`**:
+    - auto-incrementados como em Aluguéis.
+  - Campo **`valor`**:
+    - **editável** (pode variar mês a mês).
+- Comprovante:
+  - Apenas 1 arquivo, máx 2 MB, tipos `pdf/jpg/jpeg/png`.
+
+### Validação de Uploads (geral)
+
+- Implementar camada de validação no backend para:
+  - tipos de arquivo permitidos por entidade,
+  - tamanho máximo por arquivo,
+  - quantidade máxima de arquivos por registro.
+- Em caso de erro, retornar mensagens claras em português (ex: “Arquivo muito grande, limite é 2 MB”).
+
+## Dashboard e UI
+
+- Frontend React com **Chart.js** (ou similar) para gráficos.
+- Página **Dashboard** com:
+  - Gráfico de pizza: parcelas **pagas vs pendentes**.
+  - Gráfico de barras: valores das **últimas 5 parcelas**.
+  - Indicadores simples para aluguéis e condomínio (por exemplo, total pago/pendente no mês).
+- Layout responsivo (usando **Tailwind CSS** ou CSS flex/grid) para ficar confortável em smartphones.
+- UI em PT-BR (labels, botões, mensagens de erro, etc).
+
+## Seeds (dados de exemplo)
+
+- Na inicialização (script de seed) criar:
+  - 1 usuário Proprietário e 1 Comprador (credenciais simples em PT-BR).
+  - 1 registro de imóvel com valores padrão.
+  - Algumas parcelas, aluguéis e condomínios de exemplo para demonstrar os gráficos.
+- Dados (nomes, descrições) em português brasileiro.
+
+## Deploy simples (EC2)
+
+- Assuma que o deploy será feito em uma instância EC2 com Node.js.
+- Deve ser possível:
+  - rodar `npm install`
+  - rodar `npm run build:web`
+  - rodar seed do banco (`npm run seed`)
+  - rodar `npm run start` e ter **toda a aplicação** (API + frontend PWA) disponível em uma única porta HTTP.
+
+Por favor, gere todo o código necessário (backend + frontend), configuração de Vite, service worker, manifest PWA, rotas Express e modelos SQLite, seguindo essas especificações.
