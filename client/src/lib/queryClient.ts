@@ -1,57 +1,73 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { getAuthToken } from "./auth";
 
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+async function handleRequest(url: string, options?: RequestInit) {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    ...options?.headers,
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
-}
 
-export async function apiRequest(
-  method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+  if (!(options?.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers,
     credentials: "include",
   });
 
-  await throwIfResNotOk(res);
-  return res;
-}
-
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+  if (!response.ok) {
+    if (response.status >= 500) {
+      throw new Error(`${response.status}: ${response.statusText}`);
     }
 
-    await throwIfResNotOk(res);
-    return await res.json();
+    const message = await response.text();
+    throw new Error(message || `${response.status}: ${response.statusText}`);
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  return response.text();
+}
+
+export async function apiRequest(
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE",
+  url: string,
+  data?: any
+) {
+  const options: RequestInit = {
+    method,
   };
+
+  if (data) {
+    if (data instanceof FormData) {
+      options.body = data;
+    } else if (method !== "GET") {
+      options.body = JSON.stringify(data);
+    }
+  }
+
+  return handleRequest(url, options);
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
+      queryFn: async ({ queryKey }) => {
+        const url = queryKey[0] as string;
+        return handleRequest(url);
+      },
+      staleTime: 1000,
+      retry: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
-    },
-    mutations: {
-      retry: false,
     },
   },
 });
