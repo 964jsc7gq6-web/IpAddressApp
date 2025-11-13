@@ -209,9 +209,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Já existe um imóvel cadastrado. O sistema permite apenas um imóvel.");
       }
 
-      const { nome, endereco, valorImovel, valorAluguel } = req.body;
+      const { nome, endereco, valor_imovel, valor_aluguel } = req.body;
 
-      if (!nome || !endereco || !valorImovel || !valorAluguel) {
+      if (!nome || !endereco || !valor_imovel || !valor_aluguel) {
         return res.status(400).send("Campos obrigatórios faltando");
       }
 
@@ -250,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = db.prepare(
         `INSERT INTO imoveis (nome, endereco, valor_imovel, valor_aluguel) 
          VALUES (?, ?, ?, ?)`
-      ).run(nome, endereco, parseFloat(valorImovel), parseFloat(valorAluguel));
+      ).run(nome, endereco, parseFloat(valor_imovel), parseFloat(valor_aluguel));
 
       const imovelId = result.lastInsertRowid as number;
 
@@ -341,7 +341,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).send("Imóvel não encontrado");
       }
 
-      const { nome, endereco, valorImovel, valorAluguel } = req.body;
+      const { nome, endereco, valor_imovel, valor_aluguel } = req.body;
 
       const updates: string[] = [];
       const values: any[] = [];
@@ -354,13 +354,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.push("endereco = ?");
         values.push(endereco);
       }
-      if (valorImovel) {
+      if (valor_imovel) {
         updates.push("valor_imovel = ?");
-        values.push(parseFloat(valorImovel));
+        values.push(parseFloat(valor_imovel));
       }
-      if (valorAluguel) {
+      if (valor_aluguel) {
         updates.push("valor_aluguel = ?");
-        values.push(parseFloat(valorAluguel));
+        values.push(parseFloat(valor_aluguel));
       }
 
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };

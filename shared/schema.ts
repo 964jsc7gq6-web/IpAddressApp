@@ -59,15 +59,15 @@ export const imoveis = sqliteTable("imoveis", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   nome: text("nome").notNull(),
   endereco: text("endereco").notNull(),
-  valorImovel: real("valor_imovel").notNull(),
-  valorAluguel: real("valor_aluguel").notNull(),
-  contratoArquivoId: integer("contrato_arquivo_id"),
-  fotoCapaId: integer("foto_capa_id"),
+  valor_imovel: real("valor_imovel").notNull(),
+  valor_aluguel: real("valor_aluguel").notNull(),
+  contrato_arquivo_id: integer("contrato_arquivo_id"),
+  foto_capa_id: integer("foto_capa_id"),
 });
 
 export const insertImovelSchema = createInsertSchema(imoveis).omit({ id: true }).extend({
-  valorImovel: z.number().positive("Valor do imóvel deve ser positivo"),
-  valorAluguel: z.number().positive("Valor do aluguel deve ser positivo"),
+  valor_imovel: z.number().positive("Valor do imóvel deve ser positivo"),
+  valor_aluguel: z.number().positive("Valor do aluguel deve ser positivo"),
 });
 
 export type InsertImovel = z.infer<typeof insertImovelSchema>;

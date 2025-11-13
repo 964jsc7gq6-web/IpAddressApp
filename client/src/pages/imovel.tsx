@@ -54,8 +54,8 @@ export default function Imovel() {
     defaultValues: {
       nome: "",
       endereco: "",
-      valorImovel: 0,
-      valorAluguel: 0,
+      valor_imovel: 0,
+      valor_aluguel: 0,
     },
   });
 
@@ -146,8 +146,8 @@ export default function Imovel() {
       form.reset({
         nome: "",
         endereco: "",
-        valorImovel: 0,
-        valorAluguel: 0,
+        valor_imovel: 0,
+        valor_aluguel: 0,
       });
     }
     setContratoFile([]);
@@ -249,7 +249,7 @@ export default function Imovel() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <FormField
                       control={form.control}
-                      name="valorImovel"
+                      name="valor_imovel"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Valor do Imóvel *</FormLabel>
@@ -270,7 +270,7 @@ export default function Imovel() {
 
                     <FormField
                       control={form.control}
-                      name="valorAluguel"
+                      name="valor_aluguel"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Valor do Aluguel *</FormLabel>
@@ -380,13 +380,13 @@ export default function Imovel() {
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">Valor do Imóvel</p>
                   <p className="text-3xl font-mono font-bold text-primary" data-testid="text-valor-imovel">
-                    R$ {imovel.valorImovel.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    R$ {(imovel.valor_imovel || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">Valor do Aluguel</p>
                   <p className="text-3xl font-mono font-bold text-primary" data-testid="text-valor-aluguel">
-                    R$ {imovel.valorAluguel.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    R$ {(imovel.valor_aluguel || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>
@@ -398,19 +398,19 @@ export default function Imovel() {
               <CardTitle className="text-lg">Arquivos</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {imovel.contratoArquivoId && (
+              {imovel.contrato_arquivo_id && (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-muted">
                   <FileText className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm">Contrato anexado</span>
                 </div>
               )}
-              {imovel.fotoCapaId && (
+              {imovel.foto_capa_id && (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-muted">
                   <ImageIcon className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm">Foto de capa</span>
                 </div>
               )}
-              {!imovel.contratoArquivoId && !imovel.fotoCapaId && (
+              {!imovel.contrato_arquivo_id && !imovel.foto_capa_id && (
                 <p className="text-sm text-muted-foreground">Nenhum arquivo anexado</p>
               )}
             </CardContent>
