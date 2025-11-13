@@ -9,6 +9,7 @@ interface AuthContextType {
   logout: () => void;
   isProprietario: boolean;
   isComprador: boolean;
+  canManagePayments: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     isProprietario: usuario?.papel === "Proprietário",
     isComprador: usuario?.papel === "Comprador",
+    canManagePayments: usuario?.papel === "Proprietário",
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -4,7 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import type { Aluguel } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { PaymentStatusToggle } from "@/components/payment-status-toggle";
 import {
   Card,
   CardContent,
@@ -66,10 +66,11 @@ export default function Alugueis() {
     },
   });
 
-  const togglePago = (aluguel: Aluguel) => {
+  const togglePago = (aluguel: Aluguel, checked: boolean) => {
+    if (checked === !!aluguel.pago) return;
     updateMutation.mutate({
       id: aluguel.id,
-      pago: !aluguel.pago,
+      pago: checked,
     });
   };
 
@@ -97,16 +98,14 @@ export default function Alugueis() {
           <h1 className="text-2xl font-bold">Aluguéis</h1>
           <p className="text-muted-foreground">Controle mensal de aluguéis do imóvel</p>
         </div>
-        {isProprietario && (
-          <Button
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending}
-            data-testid="button-new-aluguel"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {createMutation.isPending ? "Criando..." : "Novo Aluguel"}
-          </Button>
-        )}
+        <Button
+          onClick={() => createMutation.mutate()}
+          disabled={createMutation.isPending}
+          data-testid="button-new-aluguel"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          {createMutation.isPending ? "Criando..." : "Novo Aluguel"}
+        </Button>
       </div>
 
       <div className="bg-muted/50 rounded-lg p-4">
@@ -122,20 +121,16 @@ export default function Alugueis() {
             <Calendar className="w-16 h-16 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">Nenhum aluguel cadastrado</p>
             <p className="text-sm text-muted-foreground mb-6">
-              {isProprietario
-                ? "Comece adicionando registros de aluguel"
-                : "Nenhum aluguel disponível"}
+              Comece adicionando registros de aluguel
             </p>
-            {isProprietario && (
-              <Button
-                onClick={() => createMutation.mutate()}
-                disabled={createMutation.isPending}
-                data-testid="button-new-aluguel-empty"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Primeiro Aluguel
-              </Button>
-            )}
+            <Button
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending}
+              data-testid="button-new-aluguel-empty"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Primeiro Aluguel
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -197,18 +192,14 @@ export default function Alugueis() {
                   </div>
                 )}
 
-                {isProprietario && (
-                  <div className="pt-3 border-t">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={!!aluguel.pago}
-                        onCheckedChange={() => togglePago(aluguel)}
-                        data-testid={`checkbox-pago-${aluguel.id}`}
-                      />
-                      <span className="text-sm">Marcar como {aluguel.pago ? "pendente" : "pago"}</span>
-                    </label>
-                  </div>
-                )}
+                <div className="pt-3 border-t">
+                  <PaymentStatusToggle
+                    recordId={aluguel.id}
+                    isPaid={!!aluguel.pago}
+                    onToggle={(checked) => togglePago(aluguel, checked)}
+                    isLoading={updateMutation.isPending}
+                  />
+                </div>
               </CardContent>
             </Card>
           ))}

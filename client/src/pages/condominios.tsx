@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { Condominio } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { PaymentStatusToggle } from "@/components/payment-status-toggle";
 import {
   Card,
   CardContent,
@@ -108,10 +108,11 @@ export default function Condominios() {
     createMutation.mutate(data);
   };
 
-  const togglePago = (condominio: Condominio) => {
+  const togglePago = (condominio: Condominio, checked: boolean) => {
+    if (checked === !!condominio.pago) return;
     updateMutation.mutate({
       id: condominio.id,
-      pago: !condominio.pago,
+      pago: checked,
     });
   };
 
@@ -139,14 +140,13 @@ export default function Condominios() {
           <h1 className="text-2xl font-bold">Condomínio</h1>
           <p className="text-muted-foreground">Controle mensal de taxas de condomínio</p>
         </div>
-        {isProprietario && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setDialogOpen(true)} data-testid="button-new-condominio">
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Condomínio
-              </Button>
-            </DialogTrigger>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setDialogOpen(true)} data-testid="button-new-condominio">
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Condomínio
+            </Button>
+          </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Novo Condomínio</DialogTitle>
@@ -202,7 +202,6 @@ export default function Condominios() {
               </Form>
             </DialogContent>
           </Dialog>
-        )}
       </div>
 
       <div className="bg-muted/50 rounded-lg p-4">
@@ -218,16 +217,12 @@ export default function Condominios() {
             <Building className="w-16 h-16 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">Nenhum condomínio cadastrado</p>
             <p className="text-sm text-muted-foreground mb-6">
-              {isProprietario
-                ? "Comece adicionando registros de condomínio"
-                : "Nenhum condomínio disponível"}
+              Comece adicionando registros de condomínio
             </p>
-            {isProprietario && (
-              <Button onClick={() => setDialogOpen(true)} data-testid="button-new-condominio-empty">
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Primeiro Condomínio
-              </Button>
-            )}
+            <Button onClick={() => setDialogOpen(true)} data-testid="button-new-condominio-empty">
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Primeiro Condomínio
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -289,18 +284,14 @@ export default function Condominios() {
                   </div>
                 )}
 
-                {isProprietario && (
-                  <div className="pt-3 border-t">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={!!condominio.pago}
-                        onCheckedChange={() => togglePago(condominio)}
-                        data-testid={`checkbox-pago-${condominio.id}`}
-                      />
-                      <span className="text-sm">Marcar como {condominio.pago ? "pendente" : "pago"}</span>
-                    </label>
-                  </div>
-                )}
+                <div className="pt-3 border-t">
+                  <PaymentStatusToggle
+                    recordId={condominio.id}
+                    isPaid={!!condominio.pago}
+                    onToggle={(checked) => togglePago(condominio, checked)}
+                    isLoading={updateMutation.isPending}
+                  />
+                </div>
               </CardContent>
             </Card>
           ))}

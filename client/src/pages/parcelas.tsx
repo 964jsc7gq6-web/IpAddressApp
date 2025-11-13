@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertParcelaSchema, type Parcela, type InsertParcela } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { PaymentStatusToggle } from "@/components/payment-status-toggle";
 import {
   Card,
   CardContent,
@@ -127,10 +127,11 @@ export default function Parcelas() {
     });
   };
 
-  const togglePago = (parcela: Parcela, comprovante?: File) => {
+  const togglePago = (parcela: Parcela, checked: boolean, comprovante?: File) => {
+    if (checked === !!parcela.pago) return;
     updateMutation.mutate({
       id: parcela.id,
-      pago: !parcela.pago,
+      pago: checked,
       comprovante,
     });
   };
@@ -159,14 +160,13 @@ export default function Parcelas() {
           <h1 className="text-2xl font-bold">Parcelas</h1>
           <p className="text-muted-foreground">Controle de parcelas da venda do imóvel</p>
         </div>
-        {isProprietario && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => setDialogOpen(true)} data-testid="button-new-parcela">
-                <Plus className="w-4 h-4 mr-2" />
-                Nova Parcela
-              </Button>
-            </DialogTrigger>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setDialogOpen(true)} data-testid="button-new-parcela">
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Parcela
+            </Button>
+          </DialogTrigger>
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Nova Parcela</DialogTitle>
@@ -231,7 +231,6 @@ export default function Parcelas() {
               </Form>
             </DialogContent>
           </Dialog>
-        )}
       </div>
 
       {!parcelas || parcelas.length === 0 ? (
@@ -240,16 +239,12 @@ export default function Parcelas() {
             <FileText className="w-16 h-16 text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">Nenhuma parcela cadastrada</p>
             <p className="text-sm text-muted-foreground mb-6">
-              {isProprietario
-                ? "Comece adicionando parcelas da venda do imóvel"
-                : "Nenhuma parcela disponível"}
+              Comece adicionando parcelas da venda do imóvel
             </p>
-            {isProprietario && (
-              <Button onClick={() => setDialogOpen(true)} data-testid="button-new-parcela-empty">
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Primeira Parcela
-              </Button>
-            )}
+            <Button onClick={() => setDialogOpen(true)} data-testid="button-new-parcela-empty">
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Primeira Parcela
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -311,18 +306,14 @@ export default function Parcelas() {
                   </div>
                 )}
 
-                {isProprietario && (
-                  <div className="pt-3 border-t">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <Checkbox
-                        checked={!!parcela.pago}
-                        onCheckedChange={() => togglePago(parcela)}
-                        data-testid={`checkbox-pago-${parcela.id}`}
-                      />
-                      <span className="text-sm">Marcar como {parcela.pago ? "pendente" : "paga"}</span>
-                    </label>
-                  </div>
-                )}
+                <div className="pt-3 border-t">
+                  <PaymentStatusToggle
+                    recordId={parcela.id}
+                    isPaid={!!parcela.pago}
+                    onToggle={(checked) => togglePago(parcela, checked)}
+                    isLoading={updateMutation.isPending}
+                  />
+                </div>
               </CardContent>
             </Card>
           ))}
