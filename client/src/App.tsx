@@ -19,13 +19,6 @@ import Condominios from "@/pages/condominios";
 import AlterarSenha from "@/pages/alterar-senha";
 
 function AppContent() {
-  const [location] = useLocation();
-  const { usuario } = useAuth();
-
-  if (location === "/login" || !usuario) {
-    return <Login />;
-  }
-
   const sidebarStyle = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
@@ -64,12 +57,10 @@ function Router() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
-      <Route>
-        {() => (
-          <ProtectedRoute>
-            <AppContent />
-          </ProtectedRoute>
-        )}
+      <Route path="/:rest*">
+        <ProtectedRoute>
+          <AppContent />
+        </ProtectedRoute>
       </Route>
     </Switch>
   );
