@@ -16,6 +16,7 @@ import Imovel from "@/pages/imovel";
 import Parcelas from "@/pages/parcelas";
 import Alugueis from "@/pages/alugueis";
 import Condominios from "@/pages/condominios";
+import AlterarSenha from "@/pages/alterar-senha";
 
 function AppContent() {
   const [location] = useLocation();
@@ -48,6 +49,7 @@ function AppContent() {
                 <Route path="/parcelas" component={Parcelas} />
                 <Route path="/alugueis" component={Alugueis} />
                 <Route path="/condominios" component={Condominios} />
+                <Route path="/alterar-senha" component={AlterarSenha} />
                 <Route component={NotFound} />
               </Switch>
             </div>

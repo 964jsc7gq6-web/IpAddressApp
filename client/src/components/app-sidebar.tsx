@@ -7,6 +7,7 @@ import {
   Wrench,
   LogOut,
   User,
+  Lock,
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
@@ -117,6 +118,17 @@ export function AppSidebar() {
               </div>
             </div>
           )}
+          <Link href="/alterar-senha">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+              data-testid="button-alterar-senha-menu"
+            >
+              <Lock className="w-4 h-4 mr-2" />
+              Alterar Senha
+            </Button>
+          </Link>
           <Button
             variant="outline"
             size="sm"
