@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FileViewer } from "@/components/file-viewer";
 import { FileText, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAuthToken } from "@/lib/auth";
 
 interface Arquivo {
   id: number;
@@ -37,7 +38,7 @@ export function FileList({
   const { data: allArquivos, isLoading } = useQuery<Arquivo[]>({
     queryKey: ['/api/arquivos', entidade, entidadeId],
     queryFn: async () => {
-      const token = localStorage.getItem("token");
+      const token = getAuthToken();
       if (!token) {
         throw new Error("Token não encontrado");
       }

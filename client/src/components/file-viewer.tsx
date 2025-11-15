@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileText, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthToken } from "@/lib/auth";
 
 interface FileViewerProps {
   fileId: number;
@@ -56,7 +57,7 @@ export function FileViewer({
       setError(null);
       
       try {
-        const token = localStorage.getItem("token");
+        const token = getAuthToken();
         if (!token) {
           throw new Error("Token não encontrado");
         }
@@ -113,7 +114,7 @@ export function FileViewer({
   
   const handleDownload = async () => {
     try {
-      const token = localStorage.getItem("token");
+      const token = getAuthToken();
       if (!token) {
         toast({
           variant: "destructive",
