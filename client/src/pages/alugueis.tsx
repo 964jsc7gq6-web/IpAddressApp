@@ -190,7 +190,7 @@ export default function Alugueis() {
                 <div className="pt-3 border-t space-y-2">
                   <PaymentStatusControl
                     recordId={aluguel.id}
-                    currentStatus={aluguel.status}
+                    currentStatus={aluguel.status as 'pendente' | 'pagamento_informado' | 'pago'}
                     onStatusChange={async (newStatus, comprovante) => {
                       const formData = new FormData();
                       formData.append('status', newStatus);

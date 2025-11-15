@@ -275,7 +275,7 @@ export default function Condominios() {
                 <div className="pt-3 border-t space-y-2">
                   <PaymentStatusControl
                     recordId={condominio.id}
-                    currentStatus={condominio.status}
+                    currentStatus={condominio.status as 'pendente' | 'pagamento_informado' | 'pago'}
                     onStatusChange={async (newStatus, comprovante) => {
                       const formData = new FormData();
                       formData.append('status', newStatus);
