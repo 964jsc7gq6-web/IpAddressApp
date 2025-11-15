@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/file-upload";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { z } from "zod";
 
 export default function Parcelas() {
@@ -248,13 +249,22 @@ export default function Parcelas() {
                     >
                       Cancelar
                     </Button>
-                    <Button
-                      type="submit"
+                    <ConfirmDialog
+                      trigger={
+                        <Button
+                          type="button"
+                          disabled={createMutation.isPending}
+                          data-testid="button-save"
+                        >
+                          {createMutation.isPending ? "Criando..." : "Criar Parcela"}
+                        </Button>
+                      }
+                      title="Confirmar criação de parcela"
+                      description="Deseja realmente criar esta nova parcela? Esta ação adicionará um registro financeiro ao sistema."
+                      confirmText="Criar Parcela"
+                      onConfirm={() => form.handleSubmit(onSubmit)()}
                       disabled={createMutation.isPending}
-                      data-testid="button-save"
-                    >
-                      {createMutation.isPending ? "Criando..." : "Criar Parcela"}
-                    </Button>
+                    />
                   </DialogFooter>
                 </form>
               </Form>
