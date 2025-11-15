@@ -38,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, Building } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -185,13 +186,22 @@ export default function Condominios() {
                     >
                       Cancelar
                     </Button>
-                    <Button
-                      type="submit"
+                    <ConfirmDialog
+                      trigger={
+                        <Button
+                          type="button"
+                          disabled={createMutation.isPending}
+                          data-testid="button-save"
+                        >
+                          {createMutation.isPending ? "Criando..." : "Criar Condomínio"}
+                        </Button>
+                      }
+                      title="Confirmar criação de condomínio"
+                      description="Deseja realmente criar este novo registro de condomínio? O mês e ano serão gerados automaticamente."
+                      confirmText="Criar Condomínio"
+                      onConfirm={() => form.handleSubmit(onSubmit)()}
                       disabled={createMutation.isPending}
-                      data-testid="button-save"
-                    >
-                      {createMutation.isPending ? "Criando..." : "Criar Condomínio"}
-                    </Button>
+                    />
                   </DialogFooter>
                 </form>
               </Form>
