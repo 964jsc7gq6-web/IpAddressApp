@@ -3,14 +3,13 @@ import { createServer, type Server } from "http";
 import express from "express";
 import bcrypt from "bcrypt";
 import { db } from "./db";
-import { initializeDatabase } from "./init-db";
+import { eq, and, or, desc, asc } from "drizzle-orm";
+import { usuarios, partes, imoveis, parcelas, alugueis, condominios, arquivos } from "@shared/schema";
 import { authMiddleware, requireProprietario, generateToken, type AuthRequest } from "./middleware/auth";
 import { upload, validateFiles } from "./middleware/upload";
 import type { Usuario, Parte, Imovel, Parcela, Aluguel, Condominio, Arquivo } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  await initializeDatabase();
-
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, senha } = req.body;
@@ -19,7 +18,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Email e senha são obrigatórios");
       }
 
-      const usuario = db.prepare("SELECT * FROM usuarios WHERE email = ?").get(email) as Usuario | undefined;
+      const usuario = await db.select().from(usuarios).where(eq(usuarios.email, email)).then(rows => rows[0]);
 
       if (!usuario) {
         return res.status(401).send("Credenciais inválidas");
@@ -51,7 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Nova senha deve ter no mínimo 6 caracteres");
       }
 
-      const usuario = db.prepare("SELECT * FROM usuarios WHERE id = ?").get(req.usuario!.id) as Usuario | undefined;
+      const usuario = await db.select().from(usuarios).where(eq(usuarios.id, req.usuario!.id)).then(rows => rows[0]);
 
       if (!usuario) {
         return res.status(404).send("Usuário não encontrado");
@@ -63,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const novaSenhaHash = await bcrypt.hash(novaSenha, 10);
-      db.prepare("UPDATE usuarios SET senha = ? WHERE id = ?").run(novaSenhaHash, usuario.id);
+      await db.update(usuarios).set({ senha: novaSenhaHash }).where(eq(usuarios.id, usuario.id));
 
       res.json({ message: "Senha alterada com sucesso" });
     } catch (error: any) {
@@ -71,10 +70,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/partes", authMiddleware, (req: AuthRequest, res) => {
+  app.get("/api/partes", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const partes = db.prepare("SELECT * FROM partes ORDER BY id DESC").all() as Parte[];
-      res.json(partes);
+      const result = await db.select().from(partes).orderBy(desc(partes.id));
+      res.json(result);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
@@ -101,43 +100,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const emailExistente = db.prepare("SELECT id FROM usuarios WHERE email = ?").get(email);
+      const emailExistente = await db.select().from(usuarios).where(eq(usuarios.email, email)).then(rows => rows[0]);
       if (emailExistente) {
         return res.status(400).send("Já existe um usuário com este email");
       }
 
-      const result = db.prepare(
-        `INSERT INTO partes (tipo, nome, email, telefone, rg, orgao_emissor, cpf) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).run(tipo, nome, email, telefone || null, rg || null, orgaoEmissor || null, cpf);
-
-      const parteId = result.lastInsertRowid as number;
+      const [parte] = await db.insert(partes).values({
+        tipo,
+        nome,
+        email,
+        telefone: telefone || null,
+        rg: rg || null,
+        orgao_emissor: orgaoEmissor || null,
+        cpf,
+      }).returning();
 
       const senhaInicial = "senha123";
       const hashedSenha = await bcrypt.hash(senhaInicial, 10);
-      db.prepare(
-        `INSERT INTO usuarios (email, senha, nome, papel, parte_id) VALUES (?, ?, ?, ?, ?)`
-      ).run(email, hashedSenha, nome, tipo, parteId);
+      await db.insert(usuarios).values({
+        email,
+        senha: hashedSenha,
+        nome,
+        papel: tipo,
+        parte_id: parte.id,
+      });
 
       if (files && files.length > 0) {
         for (const file of files) {
-          db.prepare(
-            `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(
-            file.originalname,
-            file.path,
-            file.mimetype,
-            file.size,
-            new Date().toISOString(),
-            "parte",
-            parteId,
-            "anexo"
-          );
+          await db.insert(arquivos).values({
+            nome_original: file.originalname,
+            caminho: file.path,
+            mime: file.mimetype,
+            tamanho: file.size,
+            entidade: "parte",
+            entidade_id: parte.id,
+            tipo: "anexo",
+          });
         }
       }
 
-      const parte = db.prepare("SELECT * FROM partes WHERE id = ?").get(parteId) as Parte;
       res.json(parte);
     } catch (error: any) {
       res.status(500).send(error.message);
@@ -149,41 +150,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { tipo, nome, email, telefone, rg, orgaoEmissor, cpf } = req.body;
 
-      const updates: string[] = [];
-      const values: any[] = [];
+      const updateData: any = {};
 
-      if (tipo) {
-        updates.push("tipo = ?");
-        values.push(tipo);
-      }
-      if (nome) {
-        updates.push("nome = ?");
-        values.push(nome);
-      }
-      if (email) {
-        updates.push("email = ?");
-        values.push(email);
-      }
-      if (telefone !== undefined) {
-        updates.push("telefone = ?");
-        values.push(telefone || null);
-      }
-      if (rg !== undefined) {
-        updates.push("rg = ?");
-        values.push(rg || null);
-      }
-      if (orgaoEmissor !== undefined) {
-        updates.push("orgao_emissor = ?");
-        values.push(orgaoEmissor || null);
-      }
-      if (cpf) {
-        updates.push("cpf = ?");
-        values.push(cpf);
-      }
+      if (tipo) updateData.tipo = tipo;
+      if (nome) updateData.nome = nome;
+      if (email) updateData.email = email;
+      if (telefone !== undefined) updateData.telefone = telefone || null;
+      if (rg !== undefined) updateData.rg = rg || null;
+      if (orgaoEmissor !== undefined) updateData.orgao_emissor = orgaoEmissor || null;
+      if (cpf) updateData.cpf = cpf;
 
-      if (updates.length > 0) {
-        values.push(id);
-        db.prepare(`UPDATE partes SET ${updates.join(", ")} WHERE id = ?`).run(...values);
+      if (Object.keys(updateData).length > 0) {
+        await db.update(partes).set(updateData).where(eq(partes.id, parseInt(id)));
       }
 
       const files = req.files as Express.Multer.File[];
@@ -199,42 +177,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         for (const file of files) {
-          db.prepare(
-            `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(
-            file.originalname,
-            file.path,
-            file.mimetype,
-            file.size,
-            new Date().toISOString(),
-            "parte",
-            id,
-            "anexo"
-          );
+          await db.insert(arquivos).values({
+            nome_original: file.originalname,
+            caminho: file.path,
+            mime: file.mimetype,
+            tamanho: file.size,
+            entidade: "parte",
+            entidade_id: parseInt(id),
+            tipo: "anexo",
+          });
         }
       }
 
-      const parte = db.prepare("SELECT * FROM partes WHERE id = ?").get(id) as Parte;
+      const parte = await db.select().from(partes).where(eq(partes.id, parseInt(id))).then(rows => rows[0]);
       res.json(parte);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
   });
 
-  app.delete("/api/partes/:id", authMiddleware, requireProprietario, (req: AuthRequest, res) => {
+  app.delete("/api/partes/:id", authMiddleware, requireProprietario, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      db.prepare("DELETE FROM partes WHERE id = ?").run(id);
+      await db.delete(partes).where(eq(partes.id, parseInt(id)));
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).send(error.message);
     }
   });
 
-  app.get("/api/imovel", authMiddleware, (req: AuthRequest, res) => {
+  app.get("/api/imovel", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const imovel = db.prepare("SELECT * FROM imoveis LIMIT 1").get() as Imovel | undefined;
+      const imovel = await db.select().from(imoveis).limit(1).then(rows => rows[0]);
       res.json(imovel || null);
     } catch (error: any) {
       res.status(500).send(error.message);
@@ -247,7 +221,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     { name: "anexos", maxCount: 10 }
   ]), async (req: AuthRequest, res) => {
     try {
-      const existingImovel = db.prepare("SELECT id FROM imoveis").get();
+      const existingImovel = await db.select().from(imoveis).then(rows => rows[0]);
       if (existingImovel) {
         return res.status(400).send("Já existe um imóvel cadastrado. O sistema permite apenas um imóvel.");
       }
@@ -290,84 +264,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (validation) return res.status(400).send(validation);
       }
 
-      const result = db.prepare(
-        `INSERT INTO imoveis (nome, endereco, valor_imovel, valor_aluguel) 
-         VALUES (?, ?, ?, ?)`
-      ).run(nome, endereco, parseFloat(valor_imovel), parseFloat(valor_aluguel));
-
-      const imovelId = result.lastInsertRowid as number;
+      const [imovel] = await db.insert(imoveis).values({
+        nome,
+        endereco,
+        valor_imovel: valor_imovel.toString(),
+        valor_aluguel: valor_aluguel.toString(),
+      }).returning();
 
       if (files.contrato && files.contrato[0]) {
         const file = files.contrato[0];
-        const arquivoResult = db.prepare(
-          `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          file.originalname,
-          file.path,
-          file.mimetype,
-          file.size,
-          new Date().toISOString(),
-          "imovel",
-          imovelId,
-          "contrato"
-        );
-        contratoId = arquivoResult.lastInsertRowid as number;
+        const [arquivo] = await db.insert(arquivos).values({
+          nome_original: file.originalname,
+          caminho: file.path,
+          mime: file.mimetype,
+          tamanho: file.size,
+          entidade: "imovel",
+          entidade_id: imovel.id,
+          tipo: "contrato",
+        }).returning();
+        contratoId = arquivo.id;
       }
 
       if (files.fotoCapa && files.fotoCapa[0]) {
         const file = files.fotoCapa[0];
-        const arquivoResult = db.prepare(
-          `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          file.originalname,
-          file.path,
-          file.mimetype,
-          file.size,
-          new Date().toISOString(),
-          "imovel",
-          imovelId,
-          "foto_capa"
-        );
-        fotoCapaId = arquivoResult.lastInsertRowid as number;
+        const [arquivo] = await db.insert(arquivos).values({
+          nome_original: file.originalname,
+          caminho: file.path,
+          mime: file.mimetype,
+          tamanho: file.size,
+          entidade: "imovel",
+          entidade_id: imovel.id,
+          tipo: "foto_capa",
+        }).returning();
+        fotoCapaId = arquivo.id;
       }
 
       if (files.anexos && files.anexos.length > 0) {
         for (const file of files.anexos) {
-          db.prepare(
-            `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(
-            file.originalname,
-            file.path,
-            file.mimetype,
-            file.size,
-            new Date().toISOString(),
-            "imovel",
-            imovelId,
-            "anexo"
-          );
+          await db.insert(arquivos).values({
+            nome_original: file.originalname,
+            caminho: file.path,
+            mime: file.mimetype,
+            tamanho: file.size,
+            entidade: "imovel",
+            entidade_id: imovel.id,
+            tipo: "anexo",
+          });
         }
       }
 
       if (contratoId || fotoCapaId) {
-        const updates: string[] = [];
-        const values: any[] = [];
-        if (contratoId) {
-          updates.push("contrato_arquivo_id = ?");
-          values.push(contratoId);
-        }
-        if (fotoCapaId) {
-          updates.push("foto_capa_id = ?");
-          values.push(fotoCapaId);
-        }
-        values.push(imovelId);
-        db.prepare(`UPDATE imoveis SET ${updates.join(", ")} WHERE id = ?`).run(...values);
+        const updateData: any = {};
+        if (contratoId) updateData.contrato_arquivo_id = contratoId;
+        if (fotoCapaId) updateData.foto_capa_id = fotoCapaId;
+        await db.update(imoveis).set(updateData).where(eq(imoveis.id, imovel.id));
       }
 
-      const imovel = db.prepare("SELECT * FROM imoveis WHERE id = ?").get(imovelId) as Imovel;
-      res.json(imovel);
+      const updatedImovel = await db.select().from(imoveis).where(eq(imoveis.id, imovel.id)).then(rows => rows[0]);
+      res.json(updatedImovel);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
@@ -379,32 +333,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     { name: "anexos", maxCount: 10 }
   ]), async (req: AuthRequest, res) => {
     try {
-      const imovel = db.prepare("SELECT * FROM imoveis LIMIT 1").get() as Imovel | undefined;
+      const imovel = await db.select().from(imoveis).limit(1).then(rows => rows[0]);
       if (!imovel) {
         return res.status(404).send("Imóvel não encontrado");
       }
 
       const { nome, endereco, valor_imovel, valor_aluguel } = req.body;
 
-      const updates: string[] = [];
-      const values: any[] = [];
+      const updateData: any = {};
 
-      if (nome) {
-        updates.push("nome = ?");
-        values.push(nome);
-      }
-      if (endereco) {
-        updates.push("endereco = ?");
-        values.push(endereco);
-      }
-      if (valor_imovel) {
-        updates.push("valor_imovel = ?");
-        values.push(parseFloat(valor_imovel));
-      }
-      if (valor_aluguel) {
-        updates.push("valor_aluguel = ?");
-        values.push(parseFloat(valor_aluguel));
-      }
+      if (nome) updateData.nome = nome;
+      if (endereco) updateData.endereco = endereco;
+      if (valor_imovel) updateData.valor_imovel = valor_imovel.toString();
+      if (valor_aluguel) updateData.valor_aluguel = valor_aluguel.toString();
 
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
@@ -417,22 +358,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (validation) return res.status(400).send(validation);
 
         const file = files.contrato[0];
-        const arquivoResult = db.prepare(
-          `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          file.originalname,
-          file.path,
-          file.mimetype,
-          file.size,
-          new Date().toISOString(),
-          "imovel",
-          imovel.id,
-          "contrato"
-        );
-        const contratoId = arquivoResult.lastInsertRowid as number;
-        updates.push("contrato_arquivo_id = ?");
-        values.push(contratoId);
+        const [arquivo] = await db.insert(arquivos).values({
+          nome_original: file.originalname,
+          caminho: file.path,
+          mime: file.mimetype,
+          tamanho: file.size,
+          entidade: "imovel",
+          entidade_id: imovel.id,
+          tipo: "contrato",
+        }).returning();
+        updateData.contrato_arquivo_id = arquivo.id;
       }
 
       if (files.fotoCapa && files.fotoCapa[0]) {
@@ -444,22 +379,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (validation) return res.status(400).send(validation);
 
         const file = files.fotoCapa[0];
-        const arquivoResult = db.prepare(
-          `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          file.originalname,
-          file.path,
-          file.mimetype,
-          file.size,
-          new Date().toISOString(),
-          "imovel",
-          imovel.id,
-          "foto_capa"
-        );
-        const fotoCapaId = arquivoResult.lastInsertRowid as number;
-        updates.push("foto_capa_id = ?");
-        values.push(fotoCapaId);
+        const [arquivo] = await db.insert(arquivos).values({
+          nome_original: file.originalname,
+          caminho: file.path,
+          mime: file.mimetype,
+          tamanho: file.size,
+          entidade: "imovel",
+          entidade_id: imovel.id,
+          tipo: "foto_capa",
+        }).returning();
+        updateData.foto_capa_id = arquivo.id;
       }
 
       if (files.anexos && files.anexos.length > 0) {
@@ -471,38 +400,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (validation) return res.status(400).send(validation);
 
         for (const file of files.anexos) {
-          db.prepare(
-            `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(
-            file.originalname,
-            file.path,
-            file.mimetype,
-            file.size,
-            new Date().toISOString(),
-            "imovel",
-            imovel.id,
-            "anexo"
-          );
+          await db.insert(arquivos).values({
+            nome_original: file.originalname,
+            caminho: file.path,
+            mime: file.mimetype,
+            tamanho: file.size,
+            entidade: "imovel",
+            entidade_id: imovel.id,
+            tipo: "anexo",
+          });
         }
       }
 
-      if (updates.length > 0) {
-        values.push(imovel.id);
-        db.prepare(`UPDATE imoveis SET ${updates.join(", ")} WHERE id = ?`).run(...values);
+      if (Object.keys(updateData).length > 0) {
+        await db.update(imoveis).set(updateData).where(eq(imoveis.id, imovel.id));
       }
 
-      const updatedImovel = db.prepare("SELECT * FROM imoveis WHERE id = ?").get(imovel.id) as Imovel;
+      const updatedImovel = await db.select().from(imoveis).where(eq(imoveis.id, imovel.id)).then(rows => rows[0]);
       res.json(updatedImovel);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
   });
 
-  app.get("/api/parcelas", authMiddleware, (req: AuthRequest, res) => {
+  app.get("/api/parcelas", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const parcelas = db.prepare("SELECT * FROM parcelas ORDER BY numero ASC").all() as Parcela[];
-      res.json(parcelas);
+      const result = await db.select().from(parcelas).orderBy(asc(parcelas.numero));
+      res.json(result);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
@@ -510,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/parcelas", authMiddleware, upload.single("comprovante"), async (req: AuthRequest, res) => {
     try {
-      const imovel = db.prepare("SELECT id FROM imoveis LIMIT 1").get() as { id: number } | undefined;
+      const imovel = await db.select().from(imoveis).limit(1).then(rows => rows[0]);
       if (!imovel) {
         return res.status(400).send("É necessário cadastrar um imóvel primeiro");
       }
@@ -520,9 +444,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Valor é obrigatório");
       }
 
-      const lastParcela = db.prepare(
-        "SELECT numero, vencimento FROM parcelas WHERE imovel_id = ? ORDER BY numero DESC LIMIT 1"
-      ).get(imovel.id) as { numero: number; vencimento: string } | undefined;
+      const lastParcela = await db
+        .select()
+        .from(parcelas)
+        .where(eq(parcelas.imovel_id, imovel.id))
+        .orderBy(desc(parcelas.numero))
+        .limit(1)
+        .then(rows => rows[0]);
 
       let numero = 1;
       let vencimento: Date;
@@ -539,12 +467,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vencimento.setDate(15);
       }
 
-      const result = db.prepare(
-        `INSERT INTO parcelas (imovel_id, numero, vencimento, valor, pago) 
-         VALUES (?, ?, ?, ?, ?)`
-      ).run(imovel.id, numero, vencimento.toISOString(), parseFloat(valor), 0);
-
-      const parcelaId = result.lastInsertRowid as number;
+      const [parcela] = await db.insert(parcelas).values({
+        imovel_id: imovel.id,
+        numero,
+        vencimento,
+        valor: valor.toString(),
+        pago: false,
+      }).returning();
 
       if (req.file) {
         const validation = validateFiles([req.file], {
@@ -554,25 +483,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         if (validation) return res.status(400).send(validation);
 
-        const arquivoResult = db.prepare(
-          `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          req.file.originalname,
-          req.file.path,
-          req.file.mimetype,
-          req.file.size,
-          new Date().toISOString(),
-          "parcela",
-          parcelaId,
-          "comprovante"
-        );
-        const comprovanteId = arquivoResult.lastInsertRowid as number;
-        db.prepare("UPDATE parcelas SET comprovante_id = ? WHERE id = ?").run(comprovanteId, parcelaId);
+        const [arquivo] = await db.insert(arquivos).values({
+          nome_original: req.file.originalname,
+          caminho: req.file.path,
+          mime: req.file.mimetype,
+          tamanho: req.file.size,
+          entidade: "parcela",
+          entidade_id: parcela.id,
+          tipo: "comprovante",
+        }).returning();
+        
+        await db.update(parcelas).set({ comprovante_id: arquivo.id }).where(eq(parcelas.id, parcela.id));
       }
 
-      const parcela = db.prepare("SELECT * FROM parcelas WHERE id = ?").get(parcelaId) as Parcela;
-      res.json(parcela);
+      const finalParcela = await db.select().from(parcelas).where(eq(parcelas.id, parcela.id)).then(rows => rows[0]);
+      res.json(finalParcela);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
@@ -583,17 +508,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { pago, pagoEm } = req.body;
 
-      const updates: string[] = [];
-      const values: any[] = [];
+      const updateData: any = {};
 
-      if (pago !== undefined) {
-        updates.push("pago = ?");
-        values.push(parseInt(pago));
-      }
-      if (pagoEm !== undefined) {
-        updates.push("pago_em = ?");
-        values.push(pagoEm || null);
-      }
+      if (pago !== undefined) updateData.pago = pago === "true" || pago === true || pago === 1;
+      if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;
 
       if (req.file) {
         const validation = validateFiles([req.file], {
@@ -603,40 +521,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         if (validation) return res.status(400).send(validation);
 
-        const arquivoResult = db.prepare(
-          `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          req.file.originalname,
-          req.file.path,
-          req.file.mimetype,
-          req.file.size,
-          new Date().toISOString(),
-          "parcela",
-          id,
-          "comprovante"
-        );
-        const comprovanteId = arquivoResult.lastInsertRowid as number;
-        updates.push("comprovante_id = ?");
-        values.push(comprovanteId);
+        const [arquivo] = await db.insert(arquivos).values({
+          nome_original: req.file.originalname,
+          caminho: req.file.path,
+          mime: req.file.mimetype,
+          tamanho: req.file.size,
+          entidade: "parcela",
+          entidade_id: parseInt(id),
+          tipo: "comprovante",
+        }).returning();
+        
+        updateData.comprovante_id = arquivo.id;
       }
 
-      if (updates.length > 0) {
-        values.push(id);
-        db.prepare(`UPDATE parcelas SET ${updates.join(", ")} WHERE id = ?`).run(...values);
+      if (Object.keys(updateData).length > 0) {
+        await db.update(parcelas).set(updateData).where(eq(parcelas.id, parseInt(id)));
       }
 
-      const parcela = db.prepare("SELECT * FROM parcelas WHERE id = ?").get(id) as Parcela;
+      const parcela = await db.select().from(parcelas).where(eq(parcelas.id, parseInt(id))).then(rows => rows[0]);
       res.json(parcela);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
   });
 
-  app.get("/api/alugueis", authMiddleware, (req: AuthRequest, res) => {
+  app.get("/api/alugueis", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const alugueis = db.prepare("SELECT * FROM alugueis ORDER BY ano DESC, mes DESC").all() as Aluguel[];
-      res.json(alugueis);
+      const result = await db.select().from(alugueis).orderBy(desc(alugueis.ano), desc(alugueis.mes));
+      res.json(result);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
@@ -644,14 +556,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/alugueis", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const imovel = db.prepare("SELECT id, valor_aluguel FROM imoveis LIMIT 1").get() as { id: number; valor_aluguel: number } | undefined;
+      const imovel = await db.select().from(imoveis).limit(1).then(rows => rows[0]);
       if (!imovel) {
         return res.status(400).send("É necessário cadastrar um imóvel primeiro");
       }
 
-      const lastAluguel = db.prepare(
-        "SELECT mes, ano FROM alugueis WHERE imovel_id = ? ORDER BY ano DESC, mes DESC LIMIT 1"
-      ).get(imovel.id) as { mes: number; ano: number } | undefined;
+      const lastAluguel = await db
+        .select()
+        .from(alugueis)
+        .where(eq(alugueis.imovel_id, imovel.id))
+        .orderBy(desc(alugueis.ano), desc(alugueis.mes))
+        .limit(1)
+        .then(rows => rows[0]);
 
       let mes = 1;
       let ano = new Date().getFullYear();
@@ -665,12 +581,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const result = db.prepare(
-        `INSERT INTO alugueis (imovel_id, mes, ano, valor, pago) 
-         VALUES (?, ?, ?, ?, ?)`
-      ).run(imovel.id, mes, ano, imovel.valor_aluguel, 0);
+      const [aluguel] = await db.insert(alugueis).values({
+        imovel_id: imovel.id,
+        mes,
+        ano,
+        valor: imovel.valor_aluguel,
+        pago: false,
+      }).returning();
 
-      const aluguel = db.prepare("SELECT * FROM alugueis WHERE id = ?").get(result.lastInsertRowid) as Aluguel;
       res.json(aluguel);
     } catch (error: any) {
       res.status(500).send(error.message);
@@ -682,17 +600,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { pago, pagoEm } = req.body;
 
-      const updates: string[] = [];
-      const values: any[] = [];
+      const updateData: any = {};
 
-      if (pago !== undefined) {
-        updates.push("pago = ?");
-        values.push(parseInt(pago));
-      }
-      if (pagoEm !== undefined) {
-        updates.push("pago_em = ?");
-        values.push(pagoEm || null);
-      }
+      if (pago !== undefined) updateData.pago = pago === "true" || pago === true || pago === 1;
+      if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;
 
       if (req.file) {
         const validation = validateFiles([req.file], {
@@ -702,40 +613,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         if (validation) return res.status(400).send(validation);
 
-        const arquivoResult = db.prepare(
-          `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          req.file.originalname,
-          req.file.path,
-          req.file.mimetype,
-          req.file.size,
-          new Date().toISOString(),
-          "aluguel",
-          id,
-          "comprovante"
-        );
-        const comprovanteId = arquivoResult.lastInsertRowid as number;
-        updates.push("comprovante_id = ?");
-        values.push(comprovanteId);
+        const [arquivo] = await db.insert(arquivos).values({
+          nome_original: req.file.originalname,
+          caminho: req.file.path,
+          mime: req.file.mimetype,
+          tamanho: req.file.size,
+          entidade: "aluguel",
+          entidade_id: parseInt(id),
+          tipo: "comprovante",
+        }).returning();
+        
+        updateData.comprovante_id = arquivo.id;
       }
 
-      if (updates.length > 0) {
-        values.push(id);
-        db.prepare(`UPDATE alugueis SET ${updates.join(", ")} WHERE id = ?`).run(...values);
+      if (Object.keys(updateData).length > 0) {
+        await db.update(alugueis).set(updateData).where(eq(alugueis.id, parseInt(id)));
       }
 
-      const aluguel = db.prepare("SELECT * FROM alugueis WHERE id = ?").get(id) as Aluguel;
+      const aluguel = await db.select().from(alugueis).where(eq(alugueis.id, parseInt(id))).then(rows => rows[0]);
       res.json(aluguel);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
   });
 
-  app.get("/api/condominios", authMiddleware, (req: AuthRequest, res) => {
+  app.get("/api/condominios", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const condominios = db.prepare("SELECT * FROM condominios ORDER BY ano DESC, mes DESC").all() as Condominio[];
-      res.json(condominios);
+      const result = await db.select().from(condominios).orderBy(desc(condominios.ano), desc(condominios.mes));
+      res.json(result);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
@@ -743,7 +648,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/condominios", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const imovel = db.prepare("SELECT id FROM imoveis LIMIT 1").get() as { id: number } | undefined;
+      const imovel = await db.select().from(imoveis).limit(1).then(rows => rows[0]);
       if (!imovel) {
         return res.status(400).send("É necessário cadastrar um imóvel primeiro");
       }
@@ -753,9 +658,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("Valor é obrigatório");
       }
 
-      const lastCondominio = db.prepare(
-        "SELECT mes, ano FROM condominios WHERE imovel_id = ? ORDER BY ano DESC, mes DESC LIMIT 1"
-      ).get(imovel.id) as { mes: number; ano: number } | undefined;
+      const lastCondominio = await db
+        .select()
+        .from(condominios)
+        .where(eq(condominios.imovel_id, imovel.id))
+        .orderBy(desc(condominios.ano), desc(condominios.mes))
+        .limit(1)
+        .then(rows => rows[0]);
 
       let mes = 1;
       let ano = new Date().getFullYear();
@@ -769,12 +678,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const result = db.prepare(
-        `INSERT INTO condominios (imovel_id, mes, ano, valor, pago) 
-         VALUES (?, ?, ?, ?, ?)`
-      ).run(imovel.id, mes, ano, parseFloat(valor), 0);
+      const [condominio] = await db.insert(condominios).values({
+        imovel_id: imovel.id,
+        mes,
+        ano,
+        valor: valor.toString(),
+        pago: false,
+      }).returning();
 
-      const condominio = db.prepare("SELECT * FROM condominios WHERE id = ?").get(result.lastInsertRowid) as Condominio;
       res.json(condominio);
     } catch (error: any) {
       res.status(500).send(error.message);
@@ -786,17 +697,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { pago, pagoEm } = req.body;
 
-      const updates: string[] = [];
-      const values: any[] = [];
+      const updateData: any = {};
 
-      if (pago !== undefined) {
-        updates.push("pago = ?");
-        values.push(parseInt(pago));
-      }
-      if (pagoEm !== undefined) {
-        updates.push("pago_em = ?");
-        values.push(pagoEm || null);
-      }
+      if (pago !== undefined) updateData.pago = pago === "true" || pago === true || pago === 1;
+      if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;
 
       if (req.file) {
         const validation = validateFiles([req.file], {
@@ -806,66 +710,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         if (validation) return res.status(400).send(validation);
 
-        const arquivoResult = db.prepare(
-          `INSERT INTO arquivos (nome_original, caminho, mime, tamanho, criado_em, entidade, entidade_id, tipo) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          req.file.originalname,
-          req.file.path,
-          req.file.mimetype,
-          req.file.size,
-          new Date().toISOString(),
-          "condominio",
-          id,
-          "comprovante"
-        );
-        const comprovanteId = arquivoResult.lastInsertRowid as number;
-        updates.push("comprovante_id = ?");
-        values.push(comprovanteId);
+        const [arquivo] = await db.insert(arquivos).values({
+          nome_original: req.file.originalname,
+          caminho: req.file.path,
+          mime: req.file.mimetype,
+          tamanho: req.file.size,
+          entidade: "condominio",
+          entidade_id: parseInt(id),
+          tipo: "comprovante",
+        }).returning();
+        
+        updateData.comprovante_id = arquivo.id;
       }
 
-      if (updates.length > 0) {
-        values.push(id);
-        db.prepare(`UPDATE condominios SET ${updates.join(", ")} WHERE id = ?`).run(...values);
+      if (Object.keys(updateData).length > 0) {
+        await db.update(condominios).set(updateData).where(eq(condominios.id, parseInt(id)));
       }
 
-      const condominio = db.prepare("SELECT * FROM condominios WHERE id = ?").get(id) as Condominio;
+      const condominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
       res.json(condominio);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
   });
 
-  app.get("/api/dashboard/stats", authMiddleware, (req: AuthRequest, res) => {
+  app.get("/api/dashboard/stats", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const parcelas = db.prepare("SELECT * FROM parcelas").all() as Parcela[];
-      const totalParcelas = parcelas.length;
-      const parcelasPagas = parcelas.filter(p => p.pago).length;
+      const todasParcelas = await db.select().from(parcelas);
+      
+      const totalParcelas = todasParcelas.length;
+      const parcelasPagas = todasParcelas.filter(p => p.pago).length;
       const parcelasPendentes = totalParcelas - parcelasPagas;
-      const valorTotalParcelas = parcelas.reduce((sum, p) => sum + p.valor, 0);
-      const valorPago = parcelas.filter(p => p.pago).reduce((sum, p) => sum + p.valor, 0);
+      const valorTotalParcelas = todasParcelas.reduce((sum, p) => sum + parseFloat(p.valor), 0);
+      const valorPago = todasParcelas.filter(p => p.pago).reduce((sum, p) => sum + parseFloat(p.valor), 0);
 
-      const proximoVencimentoParcela = parcelas
+      const proximoVencimentoParcela = todasParcelas
         .filter(p => !p.pago)
         .sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())[0];
 
-      const ultimas5Parcelas = parcelas.slice(-5).map(p => ({
+      const ultimas5Parcelas = todasParcelas.slice(-5).map(p => ({
         numero: p.numero,
-        valor: p.valor,
+        valor: parseFloat(p.valor),
         vencimento: p.vencimento,
-        pago: !!p.pago,
+        pago: p.pago,
       }));
 
       const mesAtual = new Date().getMonth() + 1;
       const anoAtual = new Date().getFullYear();
 
-      const aluguelMesAtual = db.prepare(
-        "SELECT * FROM alugueis WHERE mes = ? AND ano = ? LIMIT 1"
-      ).get(mesAtual, anoAtual) as Aluguel | undefined;
+      const aluguelMesAtual = await db
+        .select()
+        .from(alugueis)
+        .where(and(eq(alugueis.mes, mesAtual), eq(alugueis.ano, anoAtual)))
+        .limit(1)
+        .then(rows => rows[0]);
 
-      const condominioMesAtual = db.prepare(
-        "SELECT * FROM condominios WHERE mes = ? AND ano = ? LIMIT 1"
-      ).get(mesAtual, anoAtual) as Condominio | undefined;
+      const condominioMesAtual = await db
+        .select()
+        .from(condominios)
+        .where(and(eq(condominios.mes, mesAtual), eq(condominios.ano, anoAtual)))
+        .limit(1)
+        .then(rows => rows[0]);
 
       res.json({
         totalParcelas,

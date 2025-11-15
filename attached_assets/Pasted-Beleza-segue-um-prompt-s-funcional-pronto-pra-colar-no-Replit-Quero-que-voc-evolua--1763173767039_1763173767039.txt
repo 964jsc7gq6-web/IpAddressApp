@@ -1,0 +1,92 @@
+Beleza, segue um prompt só **funcional**, pronto pra colar no Replit:
+
+---
+
+Quero que você **evolua o App Ipê** já existente neste repositório. Não recrie o projeto do zero, apenas adapte o que já foi feito.
+O foco é **fluxo de uso e comportamento**, não detalhes técnicos.
+
+## 1. Remover dados de exemplo
+
+* Remova completamente:
+
+  * Qualquer dado de exemplo pré-cadastrado (imóvel, partes, parcelas, aluguéis, condomínio, usuários de teste, etc.).
+  * Qualquer lógica que insira automaticamente dados fictícios na primeira execução.
+* Após a mudança, o sistema deve iniciar **sem nenhum dado de negócio** cadastrado.
+
+## 2. Wizard de configuração inicial (primeiro uso)
+
+Quero um **wizard de configuração inicial** exibido somente enquanto o sistema ainda não estiver configurado.
+
+### Comportamento
+
+* Na primeira vez em que o sistema for utilizado (ou sempre que ainda não houver configuração inicial concluída):
+
+  * Em vez de ir direto para o uso normal, o usuário deve ser direcionado para um **wizard passo a passo**.
+* O wizard deve coletar, no mínimo, as seguintes informações:
+
+1. **Dados do Proprietário (admin do sistema)**
+
+   * Nome completo
+   * Email
+   * Senha de acesso (que será usada como login do proprietário)
+
+2. **Dados do Comprador**
+
+   * Nome completo
+   * Email
+   * Telefone
+   * Demais dados básicos que já existam hoje na entidade de “Partes”
+
+3. **Dados do Imóvel único**
+
+   * Descrição / nome do imóvel
+   * Endereço
+   * Valor total do imóvel
+   * Valor do aluguel mensal
+
+4. **Configuração do contrato**
+
+   * Data de início do contrato (essa data será usada como base para geração e lançamento dos pagamentos, conforme as regras de parcelas, aluguéis e condomínio já existentes no sistema).
+
+* Ao concluir o wizard:
+
+  * Devem ser criados o **imóvel único**, as **partes necessárias** (pelo menos Proprietário e Comprador) e a **configuração inicial** com a data de início do contrato e valor de aluguel.
+  * O sistema deve marcar internamente que a configuração inicial foi concluída.
+  * O usuário deve ser redirecionado para a **tela de login**, já podendo acessar com o email e senha do proprietário cadastrados no wizard.
+
+* Em acessos futuros:
+
+  * Se a configuração inicial já tiver sido concluída, o wizard **não deve mais aparecer**.
+  * O fluxo normal passa a ser: tela de login → sistema.
+
+## 3. Tela de login sem credenciais de teste
+
+* Remova da tela de login:
+
+  * Qualquer texto que mostre usuárias ou senhas de teste.
+  * Qualquer dica do tipo “use este email/senha para entrar”.
+* A tela deve mostrar apenas:
+
+  * Campos de email e senha.
+  * Mensagens de erro normais em português quando o login falhar.
+* O primeiro acesso real será feito com o **usuário Proprietário** criado no wizard.
+
+## 4. Manter regras atuais do App Ipê
+
+* As regras de negócio já existentes devem continuar válidas, como por exemplo:
+
+  * Imóvel único no sistema.
+  * Controle de parcelas com numeração automática, vencimento e status pago/pendente.
+  * Controle de aluguéis e condomínio com mês/ano, valores e comprovantes.
+  * Perfis de usuário Proprietário (admin) e Comprador, com permissões diferentes.
+
+Ajuste apenas o necessário para integrar essas regras ao novo fluxo com wizard de configuração inicial.
+
+## 5. Banco de dados
+
+* A partir de agora, **todos os dados do sistema devem ser armazenados em um banco PostgreSQL**, e não mais em SQLite.
+* Adapte o que for necessário para que o sistema funcione usando PostgreSQL como banco principal, mantendo o mesmo modelo de dados e regras de negócio.
+
+---
+
+Implemente todas essas mudanças mantendo o App Ipê funcional, com o novo fluxo de primeiro uso via wizard, sem dados de exemplo e usando PostgreSQL para armazenar as informações.
