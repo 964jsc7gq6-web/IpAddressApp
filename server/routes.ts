@@ -345,6 +345,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/partes/:id/criar-usuario", authMiddleware, requireProprietario, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { senha } = req.body;
+
+      if (!senha || senha.length < 6) {
+        return res.status(400).send("Senha deve ter no mínimo 6 caracteres");
+      }
+
+      const parte = await db.select().from(partes).where(eq(partes.id, parseInt(id))).then(rows => rows[0]);
+
+      if (!parte) {
+        return res.status(404).send("Parte não encontrada");
+      }
+
+      if (parte.tipo !== "Comprador") {
+        return res.status(400).send("Apenas partes do tipo Comprador podem ter usuário criado");
+      }
+
+      const usuarioExistente = await db.select().from(usuarios).where(
+        or(
+          eq(usuarios.email, parte.email),
+          eq(usuarios.parte_id, parte.id)
+        )
+      ).then(rows => rows[0]);
+
+      if (usuarioExistente) {
+        return res.status(400).send("Já existe um usuário associado a esta parte");
+      }
+
+      const senhaHash = await bcrypt.hash(senha, 10);
+      
+      const [usuario] = await db.insert(usuarios).values({
+        email: parte.email,
+        senha: senhaHash,
+        nome: parte.nome,
+        papel: "Comprador",
+        parte_id: parte.id,
+      }).returning();
+
+      const { senha: _, ...usuarioSemSenha } = usuario;
+      res.json(usuarioSemSenha);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
   app.get("/api/imovel", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const imovel = await db.select().from(imoveis).limit(1).then(rows => rows[0]);

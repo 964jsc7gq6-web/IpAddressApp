@@ -40,11 +40,15 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Mail, Phone, User, Pencil, Trash2, FileText } from "lucide-react";
+import { Plus, Mail, Phone, User, Pencil, Trash2, FileText, UserPlus, Shield } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/file-upload";
 import { FileList } from "@/components/file-list";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+
+type ParteComUsuario = Parte & {
+  tem_usuario?: boolean;
+};
 
 export default function Partes() {
   const { isProprietario } = useAuth();
@@ -52,6 +56,9 @@ export default function Partes() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingParte, setEditingParte] = useState<Parte | null>(null);
   const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [criarUsuarioDialogOpen, setCriarUsuarioDialogOpen] = useState(false);
+  const [parteParaUsuario, setParteParaUsuario] = useState<Parte | null>(null);
+  const [senha, setSenha] = useState("");
 
   const { data: partes, isLoading } = useQuery<Parte[]>({
     queryKey: ["/api/partes"],
@@ -147,6 +154,41 @@ export default function Partes() {
       });
     },
   });
+
+  const criarUsuarioMutation = useMutation({
+    mutationFn: async ({ parteId, senha }: { parteId: number; senha: string }) => {
+      return apiRequest("POST", `/api/partes/${parteId}/criar-usuario`, { senha });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/partes"] });
+      toast({ 
+        title: "Usuário criado com sucesso",
+        description: "O comprador agora pode acessar o sistema" 
+      });
+      setCriarUsuarioDialogOpen(false);
+      setSenha("");
+      setParteParaUsuario(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao criar usuário",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleCriarUsuario = () => {
+    if (parteParaUsuario && senha.length >= 6) {
+      criarUsuarioMutation.mutate({ parteId: parteParaUsuario.id, senha });
+    }
+  };
+
+  const openCriarUsuarioDialog = (parte: Parte) => {
+    setParteParaUsuario(parte);
+    setSenha("");
+    setCriarUsuarioDialogOpen(true);
+  };
 
   const onSubmit = (data: InsertParte) => {
     if (editingParte) {
@@ -464,19 +506,112 @@ export default function Partes() {
                   </p>
                 )}
                 
-                <div className="pt-4 mt-4 border-t">
+                <div className="pt-4 mt-4 border-t space-y-3">
                   <FileList
                     entidade="parte"
                     entidadeId={parte.id}
                     title="Documentos da Parte"
                     emptyMessage="Nenhum documento anexado"
                   />
+                  
+                  {isProprietario && parte.tipo === "Comprador" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openCriarUsuarioDialog(parte)}
+                      disabled={criarUsuarioMutation.isPending}
+                      className="w-full"
+                      data-testid={`button-criar-usuario-${parte.id}`}
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" />
+                      Criar Acesso ao Sistema
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={criarUsuarioDialogOpen} onOpenChange={setCriarUsuarioDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Acesso ao Sistema</DialogTitle>
+            <DialogDescription>
+              {parteParaUsuario && (
+                <>
+                  Criar credenciais de acesso para <strong>{parteParaUsuario.nome}</strong>.
+                  O email de login será <strong>{parteParaUsuario.email}</strong>.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="senha" className="text-sm font-medium">
+                Senha *
+              </label>
+              <Input
+                id="senha"
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                data-testid="input-senha-usuario"
+              />
+              {senha.length > 0 && senha.length < 6 && (
+                <p className="text-xs text-destructive">A senha deve ter no mínimo 6 caracteres</p>
+              )}
+            </div>
+
+            <div className="p-3 bg-muted rounded-md">
+              <div className="flex items-start gap-2">
+                <Shield className="w-4 h-4 text-muted-foreground mt-0.5" />
+                <div className="text-xs text-muted-foreground">
+                  <p className="font-medium mb-1">Importante:</p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    <li>O comprador terá acesso apenas para visualização</li>
+                    <li>Anote a senha e compartilhe com segurança</li>
+                    <li>A senha pode ser alterada depois pelo próprio usuário</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCriarUsuarioDialogOpen(false);
+                setSenha("");
+                setParteParaUsuario(null);
+              }}
+              disabled={criarUsuarioMutation.isPending}
+              data-testid="button-cancel-criar-usuario"
+            >
+              Cancelar
+            </Button>
+            <ConfirmDialog
+              trigger={
+                <Button
+                  disabled={senha.length < 6 || criarUsuarioMutation.isPending}
+                  data-testid="button-confirmar-criar-usuario"
+                >
+                  {criarUsuarioMutation.isPending ? "Criando..." : "Criar Acesso"}
+                </Button>
+              }
+              title="Confirmar criação de acesso"
+              description="Deseja realmente criar acesso ao sistema para este comprador? Um usuário será criado e poderá fazer login no sistema."
+              confirmText="Criar Acesso"
+              onConfirm={handleCriarUsuario}
+              disabled={senha.length < 6 || criarUsuarioMutation.isPending}
+            />
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
