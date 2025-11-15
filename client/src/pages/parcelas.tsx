@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, FileText } from "lucide-react";
+import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, FileText, Upload, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/file-upload";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -46,12 +46,24 @@ export default function Parcelas() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [comprovanteFile, setComprovanteFile] = useState<File[]>([]);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedParcelaId, setSelectedParcelaId] = useState<number | null>(null);
+  const [newComprovanteFile, setNewComprovanteFile] = useState<File[]>([]);
 
   const { data: parcelas, isLoading } = useQuery<ParcelaComComprovante[]>({
     queryKey: ["/api/parcelas"],
   });
 
-  const formSchema = insertParcelaSchema;
+  const formSchema = insertParcelaSchema.extend({
+    vencimento: z.string().optional().refine((val) => {
+      if (!val) return true;
+      const date = new Date(val);
+      const minDate = new Date();
+      minDate.setFullYear(minDate.getFullYear() - 10);
+      return date >= minDate;
+    }, "Data não pode ser mais de 10 anos no passado"),
+    valor: z.number().positive("Valor deve ser maior que zero"),
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -105,6 +117,43 @@ export default function Parcelas() {
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
     },
   });
+
+  const uploadComprovanteMutation = useMutation({
+    mutationFn: async ({ id, comprovante }: { id: number; comprovante: File }) => {
+      const formData = new FormData();
+      formData.append("comprovante", comprovante);
+      return apiRequest("PATCH", `/api/parcelas/${id}`, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/parcelas"] });
+      toast({ title: "Comprovante anexado com sucesso" });
+      setUploadDialogOpen(false);
+      setNewComprovanteFile([]);
+      setSelectedParcelaId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao anexar comprovante",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUploadComprovante = () => {
+    if (selectedParcelaId && newComprovanteFile[0]) {
+      uploadComprovanteMutation.mutate({
+        id: selectedParcelaId,
+        comprovante: newComprovanteFile[0],
+      });
+    }
+  };
+
+  const handleOpenUploadDialog = (parcelaId: number) => {
+    setSelectedParcelaId(parcelaId);
+    setNewComprovanteFile([]);
+    setUploadDialogOpen(true);
+  };
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     const formData = new FormData();
@@ -369,21 +418,78 @@ export default function Parcelas() {
                     isLoading={updateMutation.isPending}
                   />
                   
-                  {parcela.comprovante?.id && (
-                    <FileViewer
-                      fileId={parcela.comprovante.id}
-                      nomeOriginal={parcela.comprovante.nome_original}
-                      mime={parcela.comprovante.mime}
-                      label="Ver Comprovante"
-                      title="Comprovante de Pagamento"
-                    />
-                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    {parcela.comprovante?.id && (
+                      <FileViewer
+                        fileId={parcela.comprovante.id}
+                        nomeOriginal={parcela.comprovante.nome_original}
+                        mime={parcela.comprovante.mime}
+                        label="Ver Comprovante"
+                        title="Comprovante de Pagamento"
+                      />
+                    )}
+                    
+                    {isProprietario && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenUploadDialog(parcela.id)}
+                        disabled={uploadComprovanteMutation.isPending}
+                        data-testid={`button-upload-comprovante-${parcela.id}`}
+                      >
+                        <Upload className="w-3 h-3 mr-1" />
+                        {parcela.comprovante?.id ? "Substituir" : "Anexar"} Comprovante
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anexar Comprovante</DialogTitle>
+            <DialogDescription>
+              Envie o comprovante de pagamento desta parcela
+            </DialogDescription>
+          </DialogHeader>
+
+          <FileUpload
+            maxFiles={1}
+            maxSizeMB={2}
+            accept={["pdf", "jpg", "jpeg", "png"]}
+            onFilesChange={setNewComprovanteFile}
+            label="Comprovante *"
+            hint="PDF ou imagem, máx 2MB"
+          />
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUploadDialogOpen(false);
+                setNewComprovanteFile([]);
+                setSelectedParcelaId(null);
+              }}
+              disabled={uploadComprovanteMutation.isPending}
+              data-testid="button-cancel-upload"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUploadComprovante}
+              disabled={newComprovanteFile.length === 0 || uploadComprovanteMutation.isPending}
+              data-testid="button-confirm-upload"
+            >
+              {uploadComprovanteMutation.isPending ? "Enviando..." : "Enviar Comprovante"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
