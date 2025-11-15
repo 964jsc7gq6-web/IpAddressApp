@@ -2,9 +2,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import type { CondominioComComprovante } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,18 +22,17 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, Building } from "lucide-react";
+import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, Building, Trash, Edit } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
@@ -49,32 +45,30 @@ export default function Condominios() {
   const { isProprietario } = useAuth();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingCondominio, setEditingCondominio] = useState<CondominioComComprovante | null>(null);
+  const [formData, setFormData] = useState({
+    mes: new Date().getMonth() + 1,
+    ano: new Date().getFullYear(),
+    valor: "",
+  });
 
   const { data: condominios, isLoading } = useQuery<CondominioComComprovante[]>({
     queryKey: ["/api/condominios"],
   });
 
-  const formSchema = z.object({
-    valor: z.number().positive("Valor deve ser positivo"),
-  });
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      valor: 0,
-    },
-  });
-
   const createMutation = useMutation({
-    mutationFn: (data: { valor: number }) => {
-      return apiRequest("POST", "/api/condominios", data);
-    },
+    mutationFn: (data: { mes: number; ano: number; valor: string }) => 
+      apiRequest("POST", "/api/condominios", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/condominios"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "Condomínio criado com sucesso" });
       setDialogOpen(false);
-      form.reset();
+      setFormData({
+        mes: new Date().getMonth() + 1,
+        ano: new Date().getFullYear(),
+        valor: "",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -108,8 +102,51 @@ export default function Condominios() {
     },
   });
 
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    createMutation.mutate(data);
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/condominios/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/condominios"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Condomínio excluído com sucesso" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao excluir condomínio",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenDialog = (condominio?: CondominioComComprovante) => {
+    if (condominio) {
+      setEditingCondominio(condominio);
+      setFormData({
+        mes: condominio.mes,
+        ano: condominio.ano,
+        valor: condominio.valor,
+      });
+    } else {
+      setEditingCondominio(null);
+      setFormData({
+        mes: new Date().getMonth() + 1,
+        ano: new Date().getFullYear(),
+        valor: "",
+      });
+    }
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = () => {
+    if (!formData.valor || parseFloat(formData.valor) <= 0) {
+      toast({
+        title: "Valor inválido",
+        description: "Por favor, informe um valor válido",
+        variant: "destructive",
+      });
+      return;
+    }
+    createMutation.mutate(formData);
   };
 
   if (isLoading) {
@@ -136,84 +173,93 @@ export default function Condominios() {
           <h1 className="text-2xl font-bold">Condomínio</h1>
           <p className="text-muted-foreground">Controle mensal de taxas de condomínio</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setDialogOpen(true)} data-testid="button-new-condominio">
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Condomínio
-            </Button>
-          </DialogTrigger>
-            <DialogContent className="max-w-lg">
+        {isProprietario && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => handleOpenDialog()}
+                data-testid="button-new-condominio"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Condomínio
+              </Button>
+            </DialogTrigger>
+            <DialogContent data-testid="dialog-condominio-form">
               <DialogHeader>
-                <DialogTitle>Novo Condomínio</DialogTitle>
+                <DialogTitle>{editingCondominio ? "Editar Condomínio" : "Novo Condomínio"}</DialogTitle>
                 <DialogDescription>
-                  Mês e ano serão gerados automaticamente. Informe o valor.
+                  Preencha os dados do condomínio mensal
                 </DialogDescription>
               </DialogHeader>
-
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="valor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Valor (R$) *</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                            data-testid="input-valor"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Valor pode variar mês a mês
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setDialogOpen(false)}
-                      data-testid="button-cancel"
-                    >
-                      Cancelar
-                    </Button>
-                    <ConfirmDialog
-                      trigger={
-                        <Button
-                          type="button"
-                          disabled={createMutation.isPending}
-                          data-testid="button-save"
-                        >
-                          {createMutation.isPending ? "Criando..." : "Criar Condomínio"}
-                        </Button>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="mes">Mês</Label>
+                    <Select
+                      value={formData.mes.toString()}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, mes: parseInt(value) })
                       }
-                      title="Confirmar criação de condomínio"
-                      description="Deseja realmente criar este novo registro de condomínio? O mês e ano serão gerados automaticamente."
-                      confirmText="Criar Condomínio"
-                      onConfirm={() => form.handleSubmit(onSubmit)()}
-                      disabled={createMutation.isPending}
+                    >
+                      <SelectTrigger id="mes" data-testid="select-mes">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MESES.map((mes, index) => (
+                          <SelectItem key={index} value={(index + 1).toString()}>
+                            {mes}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ano">Ano</Label>
+                    <Input
+                      id="ano"
+                      type="number"
+                      value={formData.ano}
+                      onChange={(e) =>
+                        setFormData({ ...formData, ano: parseInt(e.target.value) })
+                      }
+                      data-testid="input-ano"
                     />
-                  </DialogFooter>
-                </form>
-              </Form>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="valor">Valor (R$)</Label>
+                  <Input
+                    id="valor"
+                    type="number"
+                    step="0.01"
+                    value={formData.valor}
+                    onChange={(e) =>
+                      setFormData({ ...formData, valor: e.target.value })
+                    }
+                    placeholder="0.00"
+                    data-testid="input-valor"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                  data-testid="button-cancel"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={createMutation.isPending}
+                  data-testid="button-save"
+                >
+                  {createMutation.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
-      </div>
-
-      <div className="bg-muted/50 rounded-lg p-4">
-        <p className="text-sm text-muted-foreground">
-          <strong>Nota:</strong> Mês e ano são incrementados automaticamente.
-          O valor pode ser diferente a cada mês.
-        </p>
+        )}
       </div>
 
       {!condominios || condominios.length === 0 ? (
@@ -224,10 +270,15 @@ export default function Condominios() {
             <p className="text-sm text-muted-foreground mb-6">
               Comece adicionando registros de condomínio
             </p>
-            <Button onClick={() => setDialogOpen(true)} data-testid="button-new-condominio-empty">
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Primeiro Condomínio
-            </Button>
+            {isProprietario && (
+              <Button
+                onClick={() => handleOpenDialog()}
+                data-testid="button-new-condominio-empty"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Primeiro Condomínio
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -243,6 +294,24 @@ export default function Condominios() {
                   <CardTitle className="text-lg">
                     {MESES[condominio.mes - 1]} / {condominio.ano}
                   </CardTitle>
+                  {isProprietario && condominio.status === 'pendente' && (
+                    <ConfirmDialog
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-testid={`button-delete-condominio-${condominio.id}`}
+                        >
+                          <Trash className="w-4 h-4" />
+                        </Button>
+                      }
+                      title="Confirmar exclusão"
+                      description={`Deseja realmente excluir o condomínio de ${MESES[condominio.mes - 1]}/${condominio.ano}?`}
+                      confirmText="Excluir"
+                      onConfirm={() => deleteMutation.mutate(condominio.id)}
+                      disabled={deleteMutation.isPending}
+                    />
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
