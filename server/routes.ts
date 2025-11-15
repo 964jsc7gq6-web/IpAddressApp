@@ -4,7 +4,7 @@ import express from "express";
 import bcrypt from "bcrypt";
 import { db } from "./db";
 import { eq, and, or, desc, asc } from "drizzle-orm";
-import { usuarios, partes, imoveis, parcelas, alugueis, condominios, arquivos } from "@shared/schema";
+import { usuarios, partes, imoveis, parcelas, alugueis, condominios, arquivos, configuracoes } from "@shared/schema";
 import { authMiddleware, requireProprietario, generateToken, type AuthRequest } from "./middleware/auth";
 import { upload, validateFiles } from "./middleware/upload";
 import type { Usuario, Parte, Imovel, Parcela, Aluguel, Condominio, Arquivo } from "@shared/schema";
@@ -782,6 +782,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ultimas5Parcelas,
         aluguelMesAtual: aluguelMesAtual || null,
         condominioMesAtual: condominioMesAtual || null,
+      });
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Configuração inicial (wizard)
+  app.get("/api/configuracao/status", async (req, res) => {
+    try {
+      const config = await db
+        .select()
+        .from(configuracoes)
+        .limit(1)
+        .then(rows => rows[0]);
+
+      res.json({
+        configurado: config?.configuracao_inicial || false,
+      });
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.post("/api/configuracao/wizard", async (req, res) => {
+    try {
+      const { proprietario, comprador, imovel, dataInicioContrato } = req.body;
+
+      // Validações básicas
+      if (!proprietario?.nome || !proprietario?.email || !proprietario?.senha || !proprietario?.cpf) {
+        return res.status(400).send("Dados do proprietário incompletos");
+      }
+      if (!comprador?.nome || !comprador?.email || !comprador?.cpf) {
+        return res.status(400).send("Dados do comprador incompletos");
+      }
+      if (!imovel?.nome || !imovel?.endereco || !imovel?.valorImovel || !imovel?.valorAluguel) {
+        return res.status(400).send("Dados do imóvel incompletos");
+      }
+      if (!dataInicioContrato) {
+        return res.status(400).send("Data de início do contrato é obrigatória");
+      }
+
+      // Executar tudo em uma transação
+      const resultado = await db.transaction(async (tx) => {
+        // Verificar se já foi configurado
+        const configExistente = await tx.select().from(configuracoes).limit(1).then(rows => rows[0]);
+        if (configExistente?.configuracao_inicial) {
+          throw new Error("Sistema já foi configurado");
+        }
+
+        // Verificar se já existe imóvel
+        const imovelExistente = await tx.select().from(imoveis).limit(1).then(rows => rows[0]);
+        if (imovelExistente) {
+          throw new Error("Já existe um imóvel cadastrado");
+        }
+
+        // 1. Criar parte do Proprietário
+        const [parteProprietario] = await tx
+          .insert(partes)
+          .values({
+            tipo: "Proprietário",
+            nome: proprietario.nome,
+            email: proprietario.email,
+            telefone: proprietario.telefone || null,
+            cpf: proprietario.cpf,
+            rg: proprietario.rg || null,
+            orgao_emissor: proprietario.orgaoEmissor || null,
+          })
+          .returning();
+
+        // 2. Criar usuário Proprietário (admin)
+        const senhaHash = await bcrypt.hash(proprietario.senha, 10);
+        const [usuarioProprietario] = await tx
+          .insert(usuarios)
+          .values({
+            email: proprietario.email,
+            senha: senhaHash,
+            nome: proprietario.nome,
+            papel: "Proprietário",
+            parte_id: parteProprietario.id,
+          })
+          .returning();
+
+        // 3. Criar parte do Comprador
+        const [parteComprador] = await tx
+          .insert(partes)
+          .values({
+            tipo: "Comprador",
+            nome: comprador.nome,
+            email: comprador.email,
+            telefone: comprador.telefone || null,
+            cpf: comprador.cpf,
+            rg: comprador.rg || null,
+            orgao_emissor: comprador.orgaoEmissor || null,
+          })
+          .returning();
+
+        // 4. Criar imóvel
+        const [imovelCriado] = await tx
+          .insert(imoveis)
+          .values({
+            nome: imovel.nome,
+            endereco: imovel.endereco,
+            valor_imovel: Number(imovel.valorImovel).toFixed(2),
+            valor_aluguel: Number(imovel.valorAluguel).toFixed(2),
+          })
+          .returning();
+
+        // 5. Criar configuração inicial
+        await tx.insert(configuracoes).values({
+          configuracao_inicial: true,
+          data_inicio_contrato: new Date(dataInicioContrato),
+        });
+
+        return usuarioProprietario;
+      });
+
+      res.json({
+        message: "Configuração inicial concluída com sucesso",
+        usuario: {
+          id: resultado.id,
+          email: resultado.email,
+          nome: resultado.nome,
+          papel: resultado.papel,
+        },
       });
     } catch (error: any) {
       res.status(500).send(error.message);

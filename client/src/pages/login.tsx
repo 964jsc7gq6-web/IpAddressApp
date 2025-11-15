@@ -138,16 +138,6 @@ export default function Login() {
               </Button>
             </form>
           </Form>
-
-          <div className="mt-6 p-4 bg-muted rounded-lg">
-            <p className="text-sm text-muted-foreground text-center mb-2">
-              Credenciais de teste:
-            </p>
-            <div className="text-xs space-y-1">
-              <p><strong>Proprietário:</strong> proprietario@teste.com / senha123</p>
-              <p><strong>Comprador:</strong> comprador@teste.com / senha123</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
