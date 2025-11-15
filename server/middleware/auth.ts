@@ -56,3 +56,30 @@ export function requireProprietario(
   }
   next();
 }
+
+export function validatePaymentStatusUpdate(
+  usuario: Usuario | undefined,
+  status: string | undefined,
+  hasFile: boolean,
+  hasExistingComprovante: boolean
+): { error?: string; statusCode?: number } {
+  if (!status) {
+    return {};
+  }
+
+  if (status === 'pago' && usuario?.papel !== 'Proprietário') {
+    return {
+      error: "Apenas proprietários podem marcar pagamentos como 'pago'",
+      statusCode: 403
+    };
+  }
+
+  if (status === 'pagamento_informado' && !hasFile && !hasExistingComprovante) {
+    return {
+      error: "Comprovante é obrigatório para status 'pagamento_informado'",
+      statusCode: 400
+    };
+  }
+
+  return {};
+}

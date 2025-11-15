@@ -5,7 +5,7 @@ import bcrypt from "bcrypt";
 import { db } from "./db";
 import { eq, and, or, desc, asc } from "drizzle-orm";
 import { usuarios, partes, imoveis, parcelas, alugueis, condominios, arquivos, configuracoes } from "@shared/schema";
-import { authMiddleware, requireProprietario, generateToken, type AuthRequest } from "./middleware/auth";
+import { authMiddleware, requireProprietario, generateToken, validatePaymentStatusUpdate, type AuthRequest } from "./middleware/auth";
 import { upload, validateFiles } from "./middleware/upload";
 import type { Usuario, Parte, Imovel, Parcela, Aluguel, Condominio, Arquivo } from "@shared/schema";
 
@@ -502,10 +502,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/parcelas/:id", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
+  app.patch("/api/parcelas/:id", authMiddleware, upload.single("comprovante"), async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
       const { status, pagoEm } = req.body;
+
+      const currentParcela = await db.select().from(parcelas).where(eq(parcelas.id, parseInt(id))).then(rows => rows[0]);
+      if (!currentParcela) {
+        return res.status(404).send("Parcela não encontrada");
+      }
+
+      const validation = validatePaymentStatusUpdate(
+        req.usuario, 
+        status, 
+        !!req.file,
+        !!currentParcela.comprovante_id
+      );
+      if (validation.error) {
+        return res.status(validation.statusCode || 400).send(validation.error);
+      }
 
       const updateData: any = {};
 
@@ -600,10 +615,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/alugueis/:id", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
+  app.patch("/api/alugueis/:id", authMiddleware, upload.single("comprovante"), async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
       const { status, pagoEm } = req.body;
+
+      const currentAluguel = await db.select().from(alugueis).where(eq(alugueis.id, parseInt(id))).then(rows => rows[0]);
+      if (!currentAluguel) {
+        return res.status(404).send("Aluguel não encontrado");
+      }
+
+      const validation = validatePaymentStatusUpdate(
+        req.usuario, 
+        status, 
+        !!req.file,
+        !!currentAluguel.comprovante_id
+      );
+      if (validation.error) {
+        return res.status(validation.statusCode || 400).send(validation.error);
+      }
 
       const updateData: any = {};
 
@@ -703,10 +733,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/condominios/:id", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
+  app.patch("/api/condominios/:id", authMiddleware, upload.single("comprovante"), async (req: AuthRequest, res) => {
     try {
       const { id} = req.params;
       const { status, pagoEm } = req.body;
+
+      const currentCondominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
+      if (!currentCondominio) {
+        return res.status(404).send("Condomínio não encontrado");
+      }
+
+      const validation = validatePaymentStatusUpdate(
+        req.usuario, 
+        status, 
+        !!req.file,
+        !!currentCondominio.comprovante_id
+      );
+      if (validation.error) {
+        return res.status(validation.statusCode || 400).send(validation.error);
+      }
 
       const updateData: any = {};
 
