@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Building2, MapPin, DollarSign, Pencil, FileText, Image as ImageIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/file-upload";
+import { FileList } from "@/components/file-list";
 
 export default function Imovel() {
   const { isProprietario } = useAuth();
@@ -141,7 +142,11 @@ export default function Imovel() {
 
   const openDialog = () => {
     if (imovel) {
-      form.reset(imovel);
+      form.reset({
+        ...imovel,
+        valor_imovel: Number(imovel.valor_imovel),
+        valor_aluguel: Number(imovel.valor_aluguel),
+      });
     } else {
       form.reset({
         nome: "",
@@ -393,28 +398,16 @@ export default function Imovel() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Arquivos</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {imovel.contrato_arquivo_id && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted">
-                  <FileText className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Contrato anexado</span>
-                </div>
-              )}
-              {imovel.foto_capa_id && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted">
-                  <ImageIcon className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm">Foto de capa</span>
-                </div>
-              )}
-              {!imovel.contrato_arquivo_id && !imovel.foto_capa_id && (
-                <p className="text-sm text-muted-foreground">Nenhum arquivo anexado</p>
-              )}
-            </CardContent>
-          </Card>
+          {imovel.id && (
+            <FileList
+              entidade="imovel"
+              entidadeId={imovel.id}
+              title="Anexos do Imóvel"
+              description="Documentos e arquivos relacionados ao imóvel"
+              emptyMessage="Nenhum anexo cadastrado"
+              excludeTypes={["foto_capa", "contrato"]}
+            />
+          )}
         </div>
       )}
     </div>

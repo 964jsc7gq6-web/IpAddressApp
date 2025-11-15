@@ -9,7 +9,7 @@ import type { CondominioComComprovante } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentStatusControl } from "@/components/payment-status-control";
-import { ComprovanteViewer } from "@/components/comprovante-viewer";
+import { FileViewer } from "@/components/file-viewer";
 import {
   Card,
   CardContent,
@@ -282,10 +282,12 @@ export default function Condominios() {
                   />
                   
                   {condominio.comprovante?.id && (
-                    <ComprovanteViewer
-                      comprovanteId={condominio.comprovante.id}
+                    <FileViewer
+                      fileId={condominio.comprovante.id}
                       nomeOriginal={condominio.comprovante.nome_original}
                       mime={condominio.comprovante.mime}
+                      label="Ver Comprovante"
+                      title="Comprovante de Pagamento"
                     />
                   )}
                 </div>

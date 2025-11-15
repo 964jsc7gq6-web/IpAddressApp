@@ -72,6 +72,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/arquivos", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { entidade, entidadeId } = req.query;
+      const usuario = req.usuario!;
+
+      if (!entidade || !entidadeId) {
+        return res.status(400).send("entidade e entidadeId são obrigatórios");
+      }
+
+      const entityId = parseInt(entidadeId as string);
+      let imovelId: number | null = null;
+
+      if (entidade === "parte") {
+        const parte = await db.select().from(partes).where(eq(partes.id, entityId)).then(rows => rows[0]);
+        if (!parte) {
+          return res.status(404).send("Parte não encontrada");
+        }
+        if (usuario.papel !== "Proprietário" && usuario.parte_id !== parte.id) {
+          return res.status(403).send("Acesso negado");
+        }
+      } else if (entidade === "imovel") {
+        const imovel = await db.select().from(imoveis).where(eq(imoveis.id, entityId)).then(rows => rows[0]);
+        if (!imovel) {
+          return res.status(404).send("Imóvel não encontrado");
+        }
+        imovelId = imovel.id;
+      } else {
+        return res.status(400).send("entidade inválida");
+      }
+
+      if (imovelId !== null) {
+        if (usuario.papel !== "Proprietário") {
+          const temAcesso = await ensureUsuarioPodeAcessarImovel(usuario, imovelId, db);
+          if (!temAcesso) {
+            return res.status(403).send("Acesso negado");
+          }
+        }
+      }
+
+      const arquivosList = await db
+        .select({
+          id: arquivos.id,
+          nome_original: arquivos.nome_original,
+          mime: arquivos.mime,
+          tamanho: arquivos.tamanho,
+          tipo: arquivos.tipo,
+        })
+        .from(arquivos)
+        .where(
+          and(
+            eq(arquivos.entidade, entidade as string),
+            eq(arquivos.entidade_id, entityId)
+          )
+        )
+        .orderBy(desc(arquivos.id));
+
+      res.json(arquivosList);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
   app.get("/api/arquivos/:id", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;

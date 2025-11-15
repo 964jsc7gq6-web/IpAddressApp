@@ -8,7 +8,7 @@ import { insertParcelaSchema, type ParcelaComComprovante, type InsertParcela } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentStatusControl } from "@/components/payment-status-control";
-import { ComprovanteViewer } from "@/components/comprovante-viewer";
+import { FileViewer } from "@/components/file-viewer";
 import {
   Card,
   CardContent,
@@ -307,10 +307,12 @@ export default function Parcelas() {
                   />
                   
                   {parcela.comprovante?.id && (
-                    <ComprovanteViewer
-                      comprovanteId={parcela.comprovante.id}
+                    <FileViewer
+                      fileId={parcela.comprovante.id}
                       nomeOriginal={parcela.comprovante.nome_original}
                       mime={parcela.comprovante.mime}
+                      label="Ver Comprovante"
+                      title="Comprovante de Pagamento"
                     />
                   )}
                 </div>

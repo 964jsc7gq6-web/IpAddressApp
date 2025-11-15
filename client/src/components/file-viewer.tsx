@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,13 +11,27 @@ import {
 import { FileText, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-interface ComprovanteViewerProps {
-  comprovanteId: number;
+interface FileViewerProps {
+  fileId: number;
   nomeOriginal?: string;
   mime?: string;
+  label?: string;
+  title?: string;
+  triggerVariant?: "default" | "ghost" | "outline" | "secondary";
+  triggerSize?: "default" | "sm" | "lg" | "icon";
+  customTrigger?: ReactNode;
 }
 
-export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: ComprovanteViewerProps) {
+export function FileViewer({
+  fileId,
+  nomeOriginal,
+  mime,
+  label = "Ver Arquivo",
+  title = "Visualizar Arquivo",
+  triggerVariant = "ghost",
+  triggerSize = "sm",
+  customTrigger,
+}: FileViewerProps) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +61,7 @@ export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: Comprov
           throw new Error("Token não encontrado");
         }
         
-        const response = await fetch(`/api/arquivos/${comprovanteId}`, {
+        const response = await fetch(`/api/arquivos/${fileId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -72,7 +86,7 @@ export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: Comprov
     };
     
     fetchFile();
-  }, [isOpen, comprovanteId, objectUrl]);
+  }, [isOpen, fileId, objectUrl]);
   
   useEffect(() => {
     if (!isOpen && objectUrlRef.current) {
@@ -109,7 +123,7 @@ export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: Comprov
         return;
       }
       
-      const response = await fetch(`/api/arquivos/${comprovanteId}`, {
+      const response = await fetch(`/api/arquivos/${fileId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -131,7 +145,7 @@ export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: Comprov
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = nomeOriginal || 'comprovante';
+      a.download = nomeOriginal || 'arquivo';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -153,18 +167,20 @@ export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: Comprov
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          data-testid={`button-view-comprovante-${comprovanteId}`}
-        >
-          <FileText className="h-4 w-4 mr-2" />
-          Ver Comprovante
-        </Button>
+        {customTrigger || (
+          <Button
+            variant={triggerVariant}
+            size={triggerSize}
+            data-testid={`button-view-file-${fileId}`}
+          >
+            <FileText className="h-4 w-4 mr-2" />
+            {label}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
         <DialogHeader>
-          <DialogTitle>Comprovante de Pagamento</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {nomeOriginal || "Arquivo anexado"}
           </DialogDescription>
@@ -187,9 +203,9 @@ export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: Comprov
             <div className="flex justify-center">
               <img
                 src={objectUrl}
-                alt="Comprovante"
+                alt={title}
                 className="max-w-full h-auto rounded-md border"
-                data-testid={`image-comprovante-${comprovanteId}`}
+                data-testid={`image-file-${fileId}`}
               />
             </div>
           )}
@@ -199,8 +215,8 @@ export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: Comprov
               <iframe
                 src={objectUrl}
                 className="w-full h-full border rounded-md"
-                title="Comprovante PDF"
-                data-testid={`pdf-comprovante-${comprovanteId}`}
+                title={title}
+                data-testid={`pdf-file-${fileId}`}
               />
             </div>
           )}
@@ -219,7 +235,7 @@ export function ComprovanteViewer({ comprovanteId, nomeOriginal, mime }: Comprov
               <Button
                 onClick={handleDownload}
                 variant="outline"
-                data-testid={`button-download-comprovante-${comprovanteId}`}
+                data-testid={`button-download-file-${fileId}`}
               >
                 <Download className="h-4 w-4 mr-2" />
                 Baixar Arquivo

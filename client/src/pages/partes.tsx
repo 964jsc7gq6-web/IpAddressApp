@@ -43,6 +43,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Mail, Phone, User, Pencil, Trash2, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/file-upload";
+import { FileList } from "@/components/file-list";
 
 export default function Partes() {
   const { isProprietario } = useAuth();
@@ -157,7 +158,15 @@ export default function Partes() {
   const openDialog = (parte?: Parte) => {
     if (parte) {
       setEditingParte(parte);
-      form.reset(parte);
+      form.reset({
+        tipo: parte.tipo,
+        nome: parte.nome,
+        email: parte.email,
+        telefone: parte.telefone ?? "",
+        cpf: parte.cpf,
+        rg: parte.rg ?? "",
+        orgaoEmissor: parte.orgao_emissor ?? "",
+      });
     } else {
       setEditingParte(null);
       form.reset({
@@ -441,9 +450,18 @@ export default function Partes() {
                 </div>
                 {parte.rg && (
                   <p className="text-xs text-muted-foreground">
-                    RG: {parte.rg} {parte.orgaoEmissor && `• ${parte.orgaoEmissor}`}
+                    RG: {parte.rg} {parte.orgao_emissor && `• ${parte.orgao_emissor}`}
                   </p>
                 )}
+                
+                <div className="pt-4 mt-4 border-t">
+                  <FileList
+                    entidade="parte"
+                    entidadeId={parte.id}
+                    title="Documentos da Parte"
+                    emptyMessage="Nenhum documento anexado"
+                  />
+                </div>
               </CardContent>
             </Card>
           ))}

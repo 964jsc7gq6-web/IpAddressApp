@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import type { AluguelComComprovante } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { PaymentStatusControl } from "@/components/payment-status-control";
-import { ComprovanteViewer } from "@/components/comprovante-viewer";
+import { FileViewer } from "@/components/file-viewer";
 import {
   Card,
   CardContent,
@@ -190,10 +190,12 @@ export default function Alugueis() {
                   />
                   
                   {aluguel.comprovante?.id && (
-                    <ComprovanteViewer
-                      comprovanteId={aluguel.comprovante.id}
+                    <FileViewer
+                      fileId={aluguel.comprovante.id}
                       nomeOriginal={aluguel.comprovante.nome_original}
                       mime={aluguel.comprovante.mime}
+                      label="Ver Comprovante"
+                      title="Comprovante de Pagamento"
                     />
                   )}
                 </div>
