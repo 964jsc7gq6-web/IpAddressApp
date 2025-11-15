@@ -54,15 +54,32 @@ export default function Login() {
       setLocation("/");
     },
     onError: (error: Error) => {
+      const errorMessage = error.message || "Erro desconhecido";
+      let description = "";
+      
+      if (errorMessage.includes("Credenciais inválidas")) {
+        description = "Email ou senha incorretos. Verifique e tente novamente.";
+      } else if (errorMessage.includes("Email e senha são obrigatórios")) {
+        description = "Por favor, preencha email e senha.";
+      } else if (errorMessage.includes("401")) {
+        description = "Email ou senha incorretos. Verifique e tente novamente.";
+      } else {
+        description = errorMessage;
+      }
+      
       toast({
         title: "Erro no login",
-        description: error.message || "Credenciais inválidas",
+        description,
         variant: "destructive",
       });
+      form.setFocus("email");
     },
   });
 
   const onSubmit = (data: LoginForm) => {
+    if (loginMutation.isPending) {
+      return;
+    }
     loginMutation.mutate(data);
   };
 
