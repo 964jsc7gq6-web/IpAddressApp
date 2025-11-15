@@ -290,7 +290,7 @@ export default function Parcelas() {
                 <div className="pt-3 border-t space-y-2">
                   <PaymentStatusControl
                     recordId={parcela.id}
-                    currentStatus={parcela.status}
+                    currentStatus={parcela.status as "pendente" | "pagamento_informado" | "pago"}
                     onStatusChange={async (newStatus, comprovante) => {
                       const formData = new FormData();
                       formData.append('status', newStatus);

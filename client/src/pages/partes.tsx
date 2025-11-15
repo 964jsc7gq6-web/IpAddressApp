@@ -64,7 +64,7 @@ export default function Partes() {
       email: "",
       telefone: "",
       rg: "",
-      orgaoEmissor: "",
+      orgao_emissor: "",
       cpf: "",
     },
   });
@@ -159,13 +159,13 @@ export default function Partes() {
     if (parte) {
       setEditingParte(parte);
       form.reset({
-        tipo: parte.tipo,
+        tipo: parte.tipo as "Proprietário" | "Comprador",
         nome: parte.nome,
         email: parte.email,
         telefone: parte.telefone ?? "",
         cpf: parte.cpf,
         rg: parte.rg ?? "",
-        orgaoEmissor: parte.orgao_emissor ?? "",
+        orgao_emissor: parte.orgao_emissor ?? "",
       });
     } else {
       setEditingParte(null);
@@ -175,7 +175,7 @@ export default function Partes() {
         email: "",
         telefone: "",
         rg: "",
-        orgaoEmissor: "",
+        orgao_emissor: "",
         cpf: "",
       });
     }
@@ -326,7 +326,7 @@ export default function Partes() {
 
                     <FormField
                       control={form.control}
-                      name="orgaoEmissor"
+                      name="orgao_emissor"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Órgão Emissor</FormLabel>
