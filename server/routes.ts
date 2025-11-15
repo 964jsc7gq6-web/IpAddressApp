@@ -768,31 +768,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("É necessário cadastrar um imóvel primeiro");
       }
 
-      const lastAluguel = await db
-        .select()
-        .from(alugueis)
-        .where(eq(alugueis.imovel_id, imovel.id))
-        .orderBy(desc(alugueis.ano), desc(alugueis.mes))
-        .limit(1)
-        .then(rows => rows[0]);
+      const { mes, ano, valor } = req.body;
+      
+      if (!mes || !ano || !valor) {
+        return res.status(400).send("Mês, ano e valor são obrigatórios");
+      }
 
-      let mes = 1;
-      let ano = new Date().getFullYear();
+      if (mes < 1 || mes > 12) {
+        return res.status(400).send("Mês deve estar entre 1 e 12");
+      }
 
-      if (lastAluguel) {
-        mes = lastAluguel.mes + 1;
-        ano = lastAluguel.ano;
-        if (mes > 12) {
-          mes = 1;
-          ano++;
-        }
+      if (ano < 2000) {
+        return res.status(400).send("Ano deve ser maior que 2000");
       }
 
       const [aluguel] = await db.insert(alugueis).values({
         imovel_id: imovel.id,
-        mes,
-        ano,
-        valor: imovel.valor_aluguel,
+        mes: parseInt(mes),
+        ano: parseInt(ano),
+        valor: valor.toString(),
       }).returning();
 
       res.json(aluguel);
@@ -865,6 +859,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/alugueis/:id", authMiddleware, requireProprietario, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await db.delete(alugueis).where(eq(alugueis.id, parseInt(id)));
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
   app.get("/api/condominios", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const result = await db.select({
@@ -900,35 +904,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("É necessário cadastrar um imóvel primeiro");
       }
 
-      const { valor } = req.body;
-      if (!valor) {
-        return res.status(400).send("Valor é obrigatório");
+      const { mes, ano, valor } = req.body;
+      
+      if (!mes || !ano || !valor) {
+        return res.status(400).send("Mês, ano e valor são obrigatórios");
       }
 
-      const lastCondominio = await db
-        .select()
-        .from(condominios)
-        .where(eq(condominios.imovel_id, imovel.id))
-        .orderBy(desc(condominios.ano), desc(condominios.mes))
-        .limit(1)
-        .then(rows => rows[0]);
+      if (mes < 1 || mes > 12) {
+        return res.status(400).send("Mês deve estar entre 1 e 12");
+      }
 
-      let mes = 1;
-      let ano = new Date().getFullYear();
-
-      if (lastCondominio) {
-        mes = lastCondominio.mes + 1;
-        ano = lastCondominio.ano;
-        if (mes > 12) {
-          mes = 1;
-          ano++;
-        }
+      if (ano < 2000) {
+        return res.status(400).send("Ano deve ser maior que 2000");
       }
 
       const [condominio] = await db.insert(condominios).values({
         imovel_id: imovel.id,
-        mes,
-        ano,
+        mes: parseInt(mes),
+        ano: parseInt(ano),
         valor: valor.toString(),
       }).returning();
 
@@ -997,6 +990,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const condominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
       res.json(condominio);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.delete("/api/condominios/:id", authMiddleware, requireProprietario, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await db.delete(condominios).where(eq(condominios.id, parseInt(id)));
+      res.json({ success: true });
     } catch (error: any) {
       res.status(500).send(error.message);
     }
