@@ -116,9 +116,10 @@ export const parcelas = pgTable("parcelas", {
   id: serial("id").primaryKey(),
   imovel_id: integer("imovel_id").notNull().references(() => imoveis.id, { onDelete: "cascade" }),
   numero: integer("numero").notNull(),
+  data_registro: timestamp("data_registro").notNull().defaultNow(),
   vencimento: timestamp("vencimento").notNull(),
   valor: numeric("valor", { precision: 12, scale: 2 }).notNull(),
-  pago: boolean("pago").notNull().default(false),
+  status: varchar("status", { length: 50 }).notNull().default("pendente"),
   pago_em: timestamp("pago_em"),
   comprovante_id: integer("comprovante_id").references(() => arquivos.id, { onDelete: "set null" }),
 });
@@ -134,9 +135,17 @@ export const parcelasRelations = relations(parcelas, ({ one }) => ({
   }),
 }));
 
-export const insertParcelaSchema = createInsertSchema(parcelas).omit({ id: true, pago: true, pago_em: true, comprovante_id: true }).extend({
+export const insertParcelaSchema = createInsertSchema(parcelas).omit({ 
+  id: true, 
+  status: true, 
+  pago_em: true, 
+  comprovante_id: true,
+  data_registro: true,
+  imovel_id: true,
+  numero: true,
+  vencimento: true
+}).extend({
   valor: z.number().positive("Valor deve ser positivo"),
-  vencimento: z.string().transform((val) => new Date(val)),
 });
 
 export type InsertParcela = z.infer<typeof insertParcelaSchema>;
@@ -148,8 +157,9 @@ export const alugueis = pgTable("alugueis", {
   imovel_id: integer("imovel_id").notNull().references(() => imoveis.id, { onDelete: "cascade" }),
   mes: integer("mes").notNull(), // 1-12
   ano: integer("ano").notNull(),
+  data_registro: timestamp("data_registro").notNull().defaultNow(),
   valor: numeric("valor", { precision: 12, scale: 2 }).notNull(),
-  pago: boolean("pago").notNull().default(false),
+  status: varchar("status", { length: 50 }).notNull().default("pendente"),
   pago_em: timestamp("pago_em"),
   comprovante_id: integer("comprovante_id").references(() => arquivos.id, { onDelete: "set null" }),
 });
@@ -165,7 +175,14 @@ export const alugueisRelations = relations(alugueis, ({ one }) => ({
   }),
 }));
 
-export const insertAluguelSchema = createInsertSchema(alugueis).omit({ id: true, pago: true, pago_em: true, comprovante_id: true }).extend({
+export const insertAluguelSchema = createInsertSchema(alugueis).omit({ 
+  id: true, 
+  status: true, 
+  pago_em: true, 
+  comprovante_id: true,
+  data_registro: true,
+  imovel_id: true
+}).extend({
   mes: z.number().min(1).max(12),
   ano: z.number().min(2000),
   valor: z.number().positive("Valor deve ser positivo"),
@@ -180,8 +197,9 @@ export const condominios = pgTable("condominios", {
   imovel_id: integer("imovel_id").notNull().references(() => imoveis.id, { onDelete: "cascade" }),
   mes: integer("mes").notNull(), // 1-12
   ano: integer("ano").notNull(),
+  data_registro: timestamp("data_registro").notNull().defaultNow(),
   valor: numeric("valor", { precision: 12, scale: 2 }).notNull(),
-  pago: boolean("pago").notNull().default(false),
+  status: varchar("status", { length: 50 }).notNull().default("pendente"),
   pago_em: timestamp("pago_em"),
   comprovante_id: integer("comprovante_id").references(() => arquivos.id, { onDelete: "set null" }),
 });
@@ -197,7 +215,14 @@ export const condominiosRelations = relations(condominios, ({ one }) => ({
   }),
 }));
 
-export const insertCondominioSchema = createInsertSchema(condominios).omit({ id: true, pago: true, pago_em: true, comprovante_id: true }).extend({
+export const insertCondominioSchema = createInsertSchema(condominios).omit({ 
+  id: true, 
+  status: true, 
+  pago_em: true, 
+  comprovante_id: true,
+  data_registro: true,
+  imovel_id: true
+}).extend({
   mes: z.number().min(1).max(12),
   ano: z.number().min(2000),
   valor: z.number().positive("Valor deve ser positivo"),

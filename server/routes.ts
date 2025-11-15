@@ -472,7 +472,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         numero,
         vencimento,
         valor: valor.toString(),
-        pago: false,
       }).returning();
 
       if (req.file) {
@@ -506,11 +505,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/parcelas/:id", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const { pago, pagoEm } = req.body;
+      const { status, pagoEm } = req.body;
 
       const updateData: any = {};
 
-      if (pago !== undefined) updateData.pago = pago === "true" || pago === true || pago === 1;
+      if (status !== undefined) {
+        updateData.status = status;
+        if (status === 'pago') {
+          updateData.pago_em = new Date();
+        }
+      }
       if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;
 
       if (req.file) {
@@ -586,7 +590,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mes,
         ano,
         valor: imovel.valor_aluguel,
-        pago: false,
       }).returning();
 
       res.json(aluguel);
@@ -598,11 +601,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/alugueis/:id", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const { pago, pagoEm } = req.body;
+      const { status, pagoEm } = req.body;
 
       const updateData: any = {};
 
-      if (pago !== undefined) updateData.pago = pago === "true" || pago === true || pago === 1;
+      if (status !== undefined) {
+        updateData.status = status;
+        if (status === 'pago') {
+          updateData.pago_em = new Date();
+        }
+      }
       if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;
 
       if (req.file) {
@@ -683,7 +691,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mes,
         ano,
         valor: valor.toString(),
-        pago: false,
       }).returning();
 
       res.json(condominio);
@@ -694,12 +701,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/condominios/:id", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
     try {
-      const { id } = req.params;
-      const { pago, pagoEm } = req.body;
+      const { id} = req.params;
+      const { status, pagoEm } = req.body;
 
       const updateData: any = {};
 
-      if (pago !== undefined) updateData.pago = pago === "true" || pago === true || pago === 1;
+      if (status !== undefined) {
+        updateData.status = status;
+        if (status === 'pago') {
+          updateData.pago_em = new Date();
+        }
+      }
       if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;
 
       if (req.file) {
@@ -739,20 +751,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const todasParcelas = await db.select().from(parcelas);
       
       const totalParcelas = todasParcelas.length;
-      const parcelasPagas = todasParcelas.filter(p => p.pago).length;
+      const parcelasPagas = todasParcelas.filter(p => p.status === 'pago').length;
       const parcelasPendentes = totalParcelas - parcelasPagas;
       const valorTotalParcelas = todasParcelas.reduce((sum, p) => sum + parseFloat(p.valor), 0);
-      const valorPago = todasParcelas.filter(p => p.pago).reduce((sum, p) => sum + parseFloat(p.valor), 0);
+      const valorPago = todasParcelas.filter(p => p.status === 'pago').reduce((sum, p) => sum + parseFloat(p.valor), 0);
 
       const proximoVencimentoParcela = todasParcelas
-        .filter(p => !p.pago)
+        .filter(p => p.status !== 'pago')
         .sort((a, b) => new Date(a.vencimento).getTime() - new Date(b.vencimento).getTime())[0];
 
       const ultimas5Parcelas = todasParcelas.slice(-5).map(p => ({
         numero: p.numero,
         valor: parseFloat(p.valor),
         vencimento: p.vencimento,
-        pago: p.pago,
+        status: p.status,
       }));
 
       const mesAtual = new Date().getMonth() + 1;

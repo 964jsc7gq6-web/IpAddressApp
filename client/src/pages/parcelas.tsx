@@ -49,26 +49,17 @@ export default function Parcelas() {
     queryKey: ["/api/parcelas"],
   });
 
-  const formSchema = insertParcelaSchema.extend({
-    valor: z.number().positive("Valor deve ser positivo"),
-  }).omit({ imovelId: true, numero: true, vencimento: true });
+  const formSchema = insertParcelaSchema;
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       valor: 0,
-      pago: 0,
-      pagoEm: undefined,
     },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { valor: number; comprovante?: File }) => {
-      const formData = new FormData();
-      formData.append("valor", data.valor.toString());
-      if (data.comprovante) {
-        formData.append("comprovante", data.comprovante);
-      }
+    mutationFn: async (formData: FormData) => {
       return apiRequest("POST", "/api/parcelas", formData);
     },
     onSuccess: () => {
@@ -91,16 +82,15 @@ export default function Parcelas() {
   const updateMutation = useMutation({
     mutationFn: async ({
       id,
-      pago,
+      status,
       comprovante,
     }: {
       id: number;
-      pago: boolean;
+      status: string;
       comprovante?: File;
     }) => {
       const formData = new FormData();
-      formData.append("pago", pago ? "1" : "0");
-      formData.append("pagoEm", pago ? new Date().toISOString() : "");
+      formData.append("status", status);
       if (comprovante) {
         formData.append("comprovante", comprovante);
       }
@@ -121,17 +111,20 @@ export default function Parcelas() {
   });
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    createMutation.mutate({
-      valor: data.valor,
-      comprovante: comprovanteFile[0],
-    });
+    const formData = new FormData();
+    formData.append("valor", data.valor.toString());
+    if (comprovanteFile[0]) {
+      formData.append("comprovante", comprovanteFile[0]);
+    }
+    createMutation.mutate(formData);
   };
 
   const togglePago = (parcela: Parcela, checked: boolean, comprovante?: File) => {
-    if (checked === !!parcela.pago) return;
+    const newStatus = checked ? 'pago' : 'pendente';
+    if (newStatus === parcela.status) return;
     updateMutation.mutate({
       id: parcela.id,
-      pago: checked,
+      status: newStatus,
       comprovante,
     });
   };
@@ -252,7 +245,7 @@ export default function Parcelas() {
           {parcelas.map((parcela) => (
             <Card
               key={parcela.id}
-              className={parcela.pago ? "border-primary/30" : ""}
+              className={parcela.status === 'pago' ? "border-primary/30" : ""}
               data-testid={`card-parcela-${parcela.id}`}
             >
               <CardHeader className="pb-3">
@@ -261,14 +254,19 @@ export default function Parcelas() {
                     Parcela #{parcela.numero}
                   </CardTitle>
                   <Badge
-                    variant={parcela.pago ? "default" : "destructive"}
+                    variant={parcela.status === 'pago' ? "default" : parcela.status === 'pagamento_informado' ? "secondary" : "destructive"}
                     className="flex items-center gap-1"
                     data-testid={`badge-status-${parcela.id}`}
                   >
-                    {parcela.pago ? (
+                    {parcela.status === 'pago' ? (
                       <>
                         <CheckCircle2 className="w-3 h-3" />
                         Paga
+                      </>
+                    ) : parcela.status === 'pagamento_informado' ? (
+                      <>
+                        <CheckCircle2 className="w-3 h-3" />
+                        Pagamento Informado
                       </>
                     ) : (
                       <>
@@ -295,21 +293,21 @@ export default function Parcelas() {
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-muted-foreground" />
                     <span className="text-lg font-mono font-bold" data-testid={`text-valor-${parcela.id}`}>
-                      R$ {parcela.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      R$ {parseFloat(parcela.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
 
-                {parcela.pagoEm && (
+                {parcela.pago_em && (
                   <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Pago em: {new Date(parcela.pagoEm).toLocaleDateString("pt-BR")}
+                    Pago em: {new Date(parcela.pago_em).toLocaleDateString("pt-BR")}
                   </div>
                 )}
 
                 <div className="pt-3 border-t">
                   <PaymentStatusToggle
                     recordId={parcela.id}
-                    isPaid={!!parcela.pago}
+                    isPaid={parcela.status === 'pago'}
                     onToggle={(checked) => togglePago(parcela, checked)}
                     isLoading={updateMutation.isPending}
                   />
