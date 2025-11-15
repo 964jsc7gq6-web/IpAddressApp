@@ -12,9 +12,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, DollarSign, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, Edit, Trash } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
@@ -26,17 +44,31 @@ const MESES = [
 export default function Alugueis() {
   const { isProprietario } = useAuth();
   const { toast } = useToast();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingAluguel, setEditingAluguel] = useState<AluguelComComprovante | null>(null);
+  const [formData, setFormData] = useState({
+    mes: new Date().getMonth() + 1,
+    ano: new Date().getFullYear(),
+    valor: "",
+  });
 
   const { data: alugueis, isLoading } = useQuery<AluguelComComprovante[]>({
     queryKey: ["/api/alugueis"],
   });
 
   const createMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/alugueis", {}),
+    mutationFn: (data: { mes: number; ano: number; valor: string }) => 
+      apiRequest("POST", "/api/alugueis", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/alugueis"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({ title: "Aluguel criado com sucesso" });
+      setDialogOpen(false);
+      setFormData({
+        mes: new Date().getMonth() + 1,
+        ano: new Date().getFullYear(),
+        valor: "",
+      });
     },
     onError: (error: Error) => {
       toast({
@@ -70,6 +102,53 @@ export default function Alugueis() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/alugueis/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/alugueis"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Aluguel excluído com sucesso" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao excluir aluguel",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleOpenDialog = (aluguel?: AluguelComComprovante) => {
+    if (aluguel) {
+      setEditingAluguel(aluguel);
+      setFormData({
+        mes: aluguel.mes,
+        ano: aluguel.ano,
+        valor: aluguel.valor,
+      });
+    } else {
+      setEditingAluguel(null);
+      setFormData({
+        mes: new Date().getMonth() + 1,
+        ano: new Date().getFullYear(),
+        valor: "",
+      });
+    }
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = () => {
+    if (!formData.valor || parseFloat(formData.valor) <= 0) {
+      toast({
+        title: "Valor inválido",
+        description: "Por favor, informe um valor válido",
+        variant: "destructive",
+      });
+      return;
+    }
+    createMutation.mutate(formData);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -94,29 +173,93 @@ export default function Alugueis() {
           <h1 className="text-2xl font-bold">Aluguéis</h1>
           <p className="text-muted-foreground">Controle mensal de aluguéis do imóvel</p>
         </div>
-        <ConfirmDialog
-          trigger={
-            <Button
-              disabled={createMutation.isPending}
-              data-testid="button-new-aluguel"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {createMutation.isPending ? "Criando..." : "Novo Aluguel"}
-            </Button>
-          }
-          title="Confirmar criação de aluguel"
-          description="Deseja realmente criar um novo registro de aluguel? O mês e ano serão gerados automaticamente."
-          confirmText="Criar Aluguel"
-          onConfirm={() => createMutation.mutate()}
-          disabled={createMutation.isPending}
-        />
-      </div>
-
-      <div className="bg-muted/50 rounded-lg p-4">
-        <p className="text-sm text-muted-foreground">
-          <strong>Nota:</strong> O valor do aluguel é obtido automaticamente do cadastro do imóvel.
-          Mês e ano são incrementados automaticamente.
-        </p>
+        {isProprietario && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                onClick={() => handleOpenDialog()}
+                data-testid="button-new-aluguel"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Aluguel
+              </Button>
+            </DialogTrigger>
+            <DialogContent data-testid="dialog-aluguel-form">
+              <DialogHeader>
+                <DialogTitle>{editingAluguel ? "Editar Aluguel" : "Novo Aluguel"}</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados do aluguel mensal
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="mes">Mês</Label>
+                    <Select
+                      value={formData.mes.toString()}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, mes: parseInt(value) })
+                      }
+                    >
+                      <SelectTrigger id="mes" data-testid="select-mes">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MESES.map((mes, index) => (
+                          <SelectItem key={index} value={(index + 1).toString()}>
+                            {mes}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ano">Ano</Label>
+                    <Input
+                      id="ano"
+                      type="number"
+                      value={formData.ano}
+                      onChange={(e) =>
+                        setFormData({ ...formData, ano: parseInt(e.target.value) })
+                      }
+                      data-testid="input-ano"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="valor">Valor (R$)</Label>
+                  <Input
+                    id="valor"
+                    type="number"
+                    step="0.01"
+                    value={formData.valor}
+                    onChange={(e) =>
+                      setFormData({ ...formData, valor: e.target.value })
+                    }
+                    placeholder="0.00"
+                    data-testid="input-valor"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                  data-testid="button-cancel"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={createMutation.isPending}
+                  data-testid="button-save"
+                >
+                  {createMutation.isPending ? "Salvando..." : "Salvar"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {!alugueis || alugueis.length === 0 ? (
@@ -127,22 +270,15 @@ export default function Alugueis() {
             <p className="text-sm text-muted-foreground mb-6">
               Comece adicionando registros de aluguel
             </p>
-            <ConfirmDialog
-              trigger={
-                <Button
-                  disabled={createMutation.isPending}
-                  data-testid="button-new-aluguel-empty"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Primeiro Aluguel
-                </Button>
-              }
-              title="Confirmar criação de aluguel"
-              description="Deseja realmente criar um novo registro de aluguel? O mês e ano serão gerados automaticamente."
-              confirmText="Criar Aluguel"
-              onConfirm={() => createMutation.mutate()}
-              disabled={createMutation.isPending}
-            />
+            {isProprietario && (
+              <Button
+                onClick={() => handleOpenDialog()}
+                data-testid="button-new-aluguel-empty"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Primeiro Aluguel
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -158,6 +294,24 @@ export default function Alugueis() {
                   <CardTitle className="text-lg">
                     {MESES[aluguel.mes - 1]} / {aluguel.ano}
                   </CardTitle>
+                  {isProprietario && aluguel.status === 'pendente' && (
+                    <ConfirmDialog
+                      trigger={
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          data-testid={`button-delete-aluguel-${aluguel.id}`}
+                        >
+                          <Trash className="w-4 h-4" />
+                        </Button>
+                      }
+                      title="Confirmar exclusão"
+                      description={`Deseja realmente excluir o aluguel de ${MESES[aluguel.mes - 1]}/${aluguel.ano}?`}
+                      confirmText="Excluir"
+                      onConfirm={() => deleteMutation.mutate(aluguel.id)}
+                      disabled={deleteMutation.isPending}
+                    />
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
