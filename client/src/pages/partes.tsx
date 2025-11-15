@@ -44,6 +44,7 @@ import { Plus, Mail, Phone, User, Pencil, Trash2, FileText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileUpload } from "@/components/file-upload";
 import { FileList } from "@/components/file-list";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 export default function Partes() {
   const { isProprietario } = useAuth();
@@ -420,15 +421,24 @@ export default function Partes() {
                       >
                         <Pencil className="w-4 h-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => deleteMutation.mutate(parte.id)}
-                        data-testid={`button-delete-${parte.id}`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <ConfirmDialog
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive"
+                            data-testid={`button-delete-${parte.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        }
+                        title="Confirmar exclusão"
+                        description={`Deseja realmente excluir ${parte.nome}? Esta ação não pode ser desfeita e todos os documentos associados serão removidos.`}
+                        confirmText="Excluir"
+                        variant="destructive"
+                        onConfirm={() => deleteMutation.mutate(parte.id)}
+                        disabled={deleteMutation.isPending}
+                      />
                     </div>
                   )}
                 </div>
