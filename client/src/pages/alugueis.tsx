@@ -65,14 +65,6 @@ export default function Alugueis() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/alugueis"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({ title: "Aluguel atualizado com sucesso" });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao atualizar aluguel",
-        description: error.message,
-        variant: "destructive",
-      });
     },
   });
 
@@ -181,8 +173,13 @@ export default function Alugueis() {
                   <PaymentStatusControl
                     recordId={aluguel.id}
                     currentStatus={aluguel.status}
-                    onStatusChange={(newStatus, comprovante) => {
-                      updateMutation.mutate({
+                    onStatusChange={async (newStatus, comprovante) => {
+                      const formData = new FormData();
+                      formData.append('status', newStatus);
+                      if (comprovante) {
+                        formData.append('comprovante', comprovante);
+                      }
+                      await updateMutation.mutateAsync({
                         id: aluguel.id,
                         status: newStatus,
                         comprovante,

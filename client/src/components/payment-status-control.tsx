@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileUpload } from "@/components/file-upload";
 import { CheckCircle2, Upload, XCircle } from "lucide-react";
@@ -11,7 +12,7 @@ type PaymentStatus = 'pendente' | 'pagamento_informado' | 'pago';
 interface PaymentStatusControlProps {
   recordId: number;
   currentStatus: PaymentStatus;
-  onStatusChange: (newStatus: PaymentStatus, comprovante?: File) => void;
+  onStatusChange: (newStatus: PaymentStatus, comprovante?: File) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -22,27 +23,64 @@ export function PaymentStatusControl({
   isLoading = false,
 }: PaymentStatusControlProps) {
   const { isProprietario } = useAuth();
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [comprovanteFile, setComprovanteFile] = useState<File[]>([]);
 
-  const handleInformarPagamento = () => {
+  const handleInformarPagamento = async () => {
     if (comprovanteFile.length === 0) {
       return;
     }
-    onStatusChange('pagamento_informado', comprovanteFile[0]);
-    setDialogOpen(false);
-    setComprovanteFile([]);
+    try {
+      await onStatusChange('pagamento_informado', comprovanteFile[0]);
+      setDialogOpen(false);
+      setComprovanteFile([]);
+      toast({
+        title: "Pagamento informado",
+        description: "Comprovante enviado com sucesso",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao informar pagamento",
+        description: error.message || "Tente novamente",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleMarcarPago = () => {
-    onStatusChange('pago');
+  const handleMarcarPago = async () => {
+    try {
+      await onStatusChange('pago');
+      toast({
+        title: "Pagamento confirmado",
+        description: "Registro marcado como pago",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao marcar como pago",
+        description: error.message || "Tente novamente",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleReverter = () => {
-    if (currentStatus === 'pago') {
-      onStatusChange('pagamento_informado');
-    } else if (currentStatus === 'pagamento_informado') {
-      onStatusChange('pendente');
+  const handleReverter = async () => {
+    try {
+      if (currentStatus === 'pago') {
+        await onStatusChange('pagamento_informado');
+      } else if (currentStatus === 'pagamento_informado') {
+        await onStatusChange('pendente');
+      }
+      toast({
+        title: "Status revertido",
+        description: "Operação realizada com sucesso",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao reverter status",
+        description: error.message || "Tente novamente",
+        variant: "destructive",
+      });
     }
   };
 

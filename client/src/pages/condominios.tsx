@@ -103,14 +103,6 @@ export default function Condominios() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/condominios"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({ title: "Condomínio atualizado com sucesso" });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao atualizar condomínio",
-        description: error.message,
-        variant: "destructive",
-      });
     },
   });
 
@@ -273,8 +265,13 @@ export default function Condominios() {
                   <PaymentStatusControl
                     recordId={condominio.id}
                     currentStatus={condominio.status}
-                    onStatusChange={(newStatus, comprovante) => {
-                      updateMutation.mutate({
+                    onStatusChange={async (newStatus, comprovante) => {
+                      const formData = new FormData();
+                      formData.append('status', newStatus);
+                      if (comprovante) {
+                        formData.append('comprovante', comprovante);
+                      }
+                      await updateMutation.mutateAsync({
                         id: condominio.id,
                         status: newStatus,
                         comprovante,

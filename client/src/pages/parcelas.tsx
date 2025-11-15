@@ -99,14 +99,6 @@ export default function Parcelas() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/parcelas"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      toast({ title: "Parcela atualizada com sucesso" });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao atualizar parcela",
-        description: error.message,
-        variant: "destructive",
-      });
     },
   });
 
@@ -298,8 +290,13 @@ export default function Parcelas() {
                   <PaymentStatusControl
                     recordId={parcela.id}
                     currentStatus={parcela.status}
-                    onStatusChange={(newStatus, comprovante) => {
-                      updateMutation.mutate({
+                    onStatusChange={async (newStatus, comprovante) => {
+                      const formData = new FormData();
+                      formData.append('status', newStatus);
+                      if (comprovante) {
+                        formData.append('comprovante', comprovante);
+                      }
+                      await updateMutation.mutateAsync({
                         id: parcela.id,
                         status: newStatus,
                         comprovante,
