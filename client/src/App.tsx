@@ -1,6 +1,6 @@
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/protected-route";
 
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
+import Wizard from "@/pages/wizard";
 import Dashboard from "@/pages/dashboard";
 import Partes from "@/pages/partes";
 import Imovel from "@/pages/imovel";
@@ -53,19 +54,72 @@ function AppContent() {
   );
 }
 
+function ConfigurationCheck({ children }: { children: React.ReactNode }) {
+  const { data: configStatus, isLoading } = useQuery<{ configurado: boolean }>({
+    queryKey: ["/api/configuracao/status"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (!configStatus?.configurado) {
+    return <Redirect to="/wizard" />;
+  }
+
+  return <>{children}</>;
+}
+
+function WizardGuard({ children }: { children: React.ReactNode }) {
+  const { data: configStatus, isLoading } = useQuery<{ configurado: boolean }>({
+    queryKey: ["/api/configuracao/status"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">Carregando...</div>
+      </div>
+    );
+  }
+
+  if (configStatus?.configurado) {
+    return <Redirect to="/login" />;
+  }
+
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
-      <Route path="/login" component={Login} />
+      <Route path="/wizard">
+        <WizardGuard>
+          <Wizard />
+        </WizardGuard>
+      </Route>
+      <Route path="/login">
+        <ConfigurationCheck>
+          <Login />
+        </ConfigurationCheck>
+      </Route>
       <Route path="/">
-        <ProtectedRoute>
-          <AppContent />
-        </ProtectedRoute>
+        <ConfigurationCheck>
+          <ProtectedRoute>
+            <AppContent />
+          </ProtectedRoute>
+        </ConfigurationCheck>
       </Route>
       <Route path="/:rest+">
-        <ProtectedRoute>
-          <AppContent />
-        </ProtectedRoute>
+        <ConfigurationCheck>
+          <ProtectedRoute>
+            <AppContent />
+          </ProtectedRoute>
+        </ConfigurationCheck>
       </Route>
     </Switch>
   );
