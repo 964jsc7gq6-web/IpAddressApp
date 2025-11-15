@@ -16,6 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { FileUpload } from "@/components/file-upload";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { CheckCircle2, Upload, XCircle } from "lucide-react";
 
 type PaymentStatus = 'pendente' | 'pagamento_informado' | 'pago';
@@ -220,15 +221,24 @@ export function PaymentStatusControl({
             )}
 
             {currentStatus !== 'pendente' && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleReverter}
+              <ConfirmDialog
+                trigger={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={isLoading}
+                    data-testid={`button-reverter-${recordId}`}
+                  >
+                    Reverter Status
+                  </Button>
+                }
+                title="Confirmar reversão"
+                description={`Deseja realmente reverter o status de "${currentStatus === 'pago' ? 'Pago' : 'Pagamento Informado'}" para "${currentStatus === 'pago' ? 'Pagamento Informado' : 'Pendente'}"?`}
+                confirmText="Reverter"
+                variant="destructive"
+                onConfirm={handleReverter}
                 disabled={isLoading}
-                data-testid={`button-reverter-${recordId}`}
-              >
-                Reverter Status
-              </Button>
+              />
             )}
           </>
         )}
