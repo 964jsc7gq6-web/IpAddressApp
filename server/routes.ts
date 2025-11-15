@@ -605,26 +605,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let numero: number;
       let vencimento: Date;
 
-      if (manualNumero && manualVencimento) {
+      const lastParcela = await db
+        .select()
+        .from(parcelas)
+        .where(eq(parcelas.imovel_id, imovel.id))
+        .orderBy(desc(parcelas.numero))
+        .limit(1)
+        .then(rows => rows[0]);
+
+      if (manualNumero) {
         numero = parseInt(manualNumero);
+      } else {
+        numero = lastParcela ? lastParcela.numero + 1 : 1;
+      }
+
+      if (manualVencimento) {
         vencimento = new Date(manualVencimento);
       } else {
-        const lastParcela = await db
-          .select()
-          .from(parcelas)
-          .where(eq(parcelas.imovel_id, imovel.id))
-          .orderBy(desc(parcelas.numero))
-          .limit(1)
-          .then(rows => rows[0]);
-
         if (lastParcela) {
-          numero = lastParcela.numero + 1;
           const lastVencimento = new Date(lastParcela.vencimento);
           vencimento = new Date(lastVencimento);
           vencimento.setMonth(vencimento.getMonth() + 1);
           vencimento.setDate(15);
         } else {
-          numero = 1;
           vencimento = new Date();
           vencimento.setMonth(vencimento.getMonth() + 1);
           vencimento.setDate(15);
