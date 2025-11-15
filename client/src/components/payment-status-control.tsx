@@ -4,6 +4,17 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { FileUpload } from "@/components/file-upload";
 import { CheckCircle2, Upload, XCircle } from "lucide-react";
 
@@ -175,15 +186,37 @@ export function PaymentStatusControl({
         {isProprietario && (
           <>
             {(currentStatus === 'pendente' || currentStatus === 'pagamento_informado') && (
-              <Button
-                size="sm"
-                onClick={handleMarcarPago}
-                disabled={isLoading}
-                data-testid={`button-marcar-pago-${recordId}`}
-              >
-                <CheckCircle2 className="w-3 h-3 mr-1" />
-                Marcar como Pago
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    disabled={isLoading}
+                    data-testid={`button-marcar-pago-${recordId}`}
+                  >
+                    <CheckCircle2 className="w-3 h-3 mr-1" />
+                    Marcar como Pago
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent data-testid="alert-confirmar-pago">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Tem certeza que deseja marcar este registro como pago? Esta ação confirmará que o pagamento foi recebido.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel data-testid="button-cancelar-confirmar-pago">
+                      Cancelar
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleMarcarPago}
+                      data-testid="button-confirmar-pago"
+                    >
+                      Confirmar Pagamento
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
 
             {currentStatus !== 'pendente' && (
