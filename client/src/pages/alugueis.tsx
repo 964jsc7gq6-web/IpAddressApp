@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Calendar, DollarSign, CheckCircle2, XCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -93,14 +94,22 @@ export default function Alugueis() {
           <h1 className="text-2xl font-bold">Aluguéis</h1>
           <p className="text-muted-foreground">Controle mensal de aluguéis do imóvel</p>
         </div>
-        <Button
-          onClick={() => createMutation.mutate()}
+        <ConfirmDialog
+          trigger={
+            <Button
+              disabled={createMutation.isPending}
+              data-testid="button-new-aluguel"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {createMutation.isPending ? "Criando..." : "Novo Aluguel"}
+            </Button>
+          }
+          title="Confirmar criação de aluguel"
+          description="Deseja realmente criar um novo registro de aluguel? O mês e ano serão gerados automaticamente."
+          confirmText="Criar Aluguel"
+          onConfirm={() => createMutation.mutate()}
           disabled={createMutation.isPending}
-          data-testid="button-new-aluguel"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          {createMutation.isPending ? "Criando..." : "Novo Aluguel"}
-        </Button>
+        />
       </div>
 
       <div className="bg-muted/50 rounded-lg p-4">
@@ -118,14 +127,22 @@ export default function Alugueis() {
             <p className="text-sm text-muted-foreground mb-6">
               Comece adicionando registros de aluguel
             </p>
-            <Button
-              onClick={() => createMutation.mutate()}
+            <ConfirmDialog
+              trigger={
+                <Button
+                  disabled={createMutation.isPending}
+                  data-testid="button-new-aluguel-empty"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar Primeiro Aluguel
+                </Button>
+              }
+              title="Confirmar criação de aluguel"
+              description="Deseja realmente criar um novo registro de aluguel? O mês e ano serão gerados automaticamente."
+              confirmText="Criar Aluguel"
+              onConfirm={() => createMutation.mutate()}
               disabled={createMutation.isPending}
-              data-testid="button-new-aluguel-empty"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Primeiro Aluguel
-            </Button>
+            />
           </CardContent>
         </Card>
       ) : (
