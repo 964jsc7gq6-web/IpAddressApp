@@ -4,7 +4,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import type { Aluguel } from "@shared/schema";
 import { Button } from "@/components/ui/button";
-import { PaymentStatusToggle } from "@/components/payment-status-toggle";
+import { PaymentStatusControl } from "@/components/payment-status-control";
 import {
   Card,
   CardContent,
@@ -46,11 +46,21 @@ export default function Alugueis() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, pago }: { id: number; pago: boolean }) => {
-      return apiRequest("PATCH", `/api/alugueis/${id}`, {
-        pago: pago ? 1 : 0,
-        pagoEm: pago ? new Date().toISOString() : null,
-      });
+    mutationFn: async ({
+      id,
+      status,
+      comprovante,
+    }: {
+      id: number;
+      status: string;
+      comprovante?: File;
+    }) => {
+      const formData = new FormData();
+      formData.append("status", status);
+      if (comprovante) {
+        formData.append("comprovante", comprovante);
+      }
+      return apiRequest("PATCH", `/api/alugueis/${id}`, formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/alugueis"] });
@@ -65,14 +75,6 @@ export default function Alugueis() {
       });
     },
   });
-
-  const togglePago = (aluguel: Aluguel, checked: boolean) => {
-    if (checked === !!aluguel.pago) return;
-    updateMutation.mutate({
-      id: aluguel.id,
-      pago: checked,
-    });
-  };
 
   if (isLoading) {
     return (
@@ -138,7 +140,7 @@ export default function Alugueis() {
           {alugueis.map((aluguel) => (
             <Card
               key={aluguel.id}
-              className={aluguel.pago ? "border-primary/30" : ""}
+              className={aluguel.status === 'pago' ? "border-primary/30" : ""}
               data-testid={`card-aluguel-${aluguel.id}`}
             >
               <CardHeader className="pb-3">
@@ -146,23 +148,6 @@ export default function Alugueis() {
                   <CardTitle className="text-lg">
                     {MESES[aluguel.mes - 1]} / {aluguel.ano}
                   </CardTitle>
-                  <Badge
-                    variant={aluguel.pago ? "default" : "destructive"}
-                    className="flex items-center gap-1"
-                    data-testid={`badge-status-${aluguel.id}`}
-                  >
-                    {aluguel.pago ? (
-                      <>
-                        <CheckCircle2 className="w-3 h-3" />
-                        Pago
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-3 h-3" />
-                        Pendente
-                      </>
-                    )}
-                  </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -181,22 +166,28 @@ export default function Alugueis() {
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-muted-foreground" />
                     <span className="text-lg font-mono font-bold" data-testid={`text-valor-${aluguel.id}`}>
-                      R$ {aluguel.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      R$ {parseFloat(aluguel.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
 
-                {aluguel.pagoEm && (
+                {aluguel.pago_em && (
                   <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Pago em: {new Date(aluguel.pagoEm).toLocaleDateString("pt-BR")}
+                    Pago em: {new Date(aluguel.pago_em).toLocaleDateString("pt-BR")}
                   </div>
                 )}
 
                 <div className="pt-3 border-t">
-                  <PaymentStatusToggle
+                  <PaymentStatusControl
                     recordId={aluguel.id}
-                    isPaid={!!aluguel.pago}
-                    onToggle={(checked) => togglePago(aluguel, checked)}
+                    currentStatus={aluguel.status}
+                    onStatusChange={(newStatus, comprovante) => {
+                      updateMutation.mutate({
+                        id: aluguel.id,
+                        status: newStatus,
+                        comprovante,
+                      });
+                    }}
                     isLoading={updateMutation.isPending}
                   />
                 </div>

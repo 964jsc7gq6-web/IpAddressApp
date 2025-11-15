@@ -513,6 +513,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.status = status;
         if (status === 'pago') {
           updateData.pago_em = new Date();
+        } else {
+          updateData.pago_em = null;
         }
       }
       if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;
@@ -609,6 +611,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.status = status;
         if (status === 'pago') {
           updateData.pago_em = new Date();
+        } else {
+          updateData.pago_em = null;
         }
       }
       if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;
@@ -710,6 +714,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.status = status;
         if (status === 'pago') {
           updateData.pago_em = new Date();
+        } else {
+          updateData.pago_em = null;
         }
       }
       if (pagoEm !== undefined) updateData.pago_em = pagoEm ? new Date(pagoEm) : null;

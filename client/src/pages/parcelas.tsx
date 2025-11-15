@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertParcelaSchema, type Parcela, type InsertParcela } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PaymentStatusToggle } from "@/components/payment-status-toggle";
+import { PaymentStatusControl } from "@/components/payment-status-control";
 import {
   Card,
   CardContent,
@@ -117,16 +117,6 @@ export default function Parcelas() {
       formData.append("comprovante", comprovanteFile[0]);
     }
     createMutation.mutate(formData);
-  };
-
-  const togglePago = (parcela: Parcela, checked: boolean, comprovante?: File) => {
-    const newStatus = checked ? 'pago' : 'pendente';
-    if (newStatus === parcela.status) return;
-    updateMutation.mutate({
-      id: parcela.id,
-      status: newStatus,
-      comprovante,
-    });
   };
 
   if (isLoading) {
@@ -305,10 +295,16 @@ export default function Parcelas() {
                 )}
 
                 <div className="pt-3 border-t">
-                  <PaymentStatusToggle
+                  <PaymentStatusControl
                     recordId={parcela.id}
-                    isPaid={parcela.status === 'pago'}
-                    onToggle={(checked) => togglePago(parcela, checked)}
+                    currentStatus={parcela.status}
+                    onStatusChange={(newStatus, comprovante) => {
+                      updateMutation.mutate({
+                        id: parcela.id,
+                        status: newStatus,
+                        comprovante,
+                      });
+                    }}
                     isLoading={updateMutation.isPending}
                   />
                 </div>

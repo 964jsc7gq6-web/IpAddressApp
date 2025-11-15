@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { Condominio } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PaymentStatusToggle } from "@/components/payment-status-toggle";
+import { PaymentStatusControl } from "@/components/payment-status-control";
 import {
   Card,
   CardContent,
@@ -84,11 +84,21 @@ export default function Condominios() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, pago }: { id: number; pago: boolean }) => {
-      return apiRequest("PATCH", `/api/condominios/${id}`, {
-        pago: pago ? 1 : 0,
-        pagoEm: pago ? new Date().toISOString() : null,
-      });
+    mutationFn: async ({
+      id,
+      status,
+      comprovante,
+    }: {
+      id: number;
+      status: string;
+      comprovante?: File;
+    }) => {
+      const formData = new FormData();
+      formData.append("status", status);
+      if (comprovante) {
+        formData.append("comprovante", comprovante);
+      }
+      return apiRequest("PATCH", `/api/condominios/${id}`, formData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/condominios"] });
@@ -106,14 +116,6 @@ export default function Condominios() {
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     createMutation.mutate(data);
-  };
-
-  const togglePago = (condominio: Condominio, checked: boolean) => {
-    if (checked === !!condominio.pago) return;
-    updateMutation.mutate({
-      id: condominio.id,
-      pago: checked,
-    });
   };
 
   if (isLoading) {
@@ -230,7 +232,7 @@ export default function Condominios() {
           {condominios.map((condominio) => (
             <Card
               key={condominio.id}
-              className={condominio.pago ? "border-primary/30" : ""}
+              className={condominio.status === 'pago' ? "border-primary/30" : ""}
               data-testid={`card-condominio-${condominio.id}`}
             >
               <CardHeader className="pb-3">
@@ -238,23 +240,6 @@ export default function Condominios() {
                   <CardTitle className="text-lg">
                     {MESES[condominio.mes - 1]} / {condominio.ano}
                   </CardTitle>
-                  <Badge
-                    variant={condominio.pago ? "default" : "destructive"}
-                    className="flex items-center gap-1"
-                    data-testid={`badge-status-${condominio.id}`}
-                  >
-                    {condominio.pago ? (
-                      <>
-                        <CheckCircle2 className="w-3 h-3" />
-                        Pago
-                      </>
-                    ) : (
-                      <>
-                        <XCircle className="w-3 h-3" />
-                        Pendente
-                      </>
-                    )}
-                  </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -273,22 +258,28 @@ export default function Condominios() {
                   <div className="flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-muted-foreground" />
                     <span className="text-lg font-mono font-bold" data-testid={`text-valor-${condominio.id}`}>
-                      R$ {condominio.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      R$ {parseFloat(condominio.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
 
-                {condominio.pagoEm && (
+                {condominio.pago_em && (
                   <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Pago em: {new Date(condominio.pagoEm).toLocaleDateString("pt-BR")}
+                    Pago em: {new Date(condominio.pago_em).toLocaleDateString("pt-BR")}
                   </div>
                 )}
 
                 <div className="pt-3 border-t">
-                  <PaymentStatusToggle
+                  <PaymentStatusControl
                     recordId={condominio.id}
-                    isPaid={!!condominio.pago}
-                    onToggle={(checked) => togglePago(condominio, checked)}
+                    currentStatus={condominio.status}
+                    onStatusChange={(newStatus, comprovante) => {
+                      updateMutation.mutate({
+                        id: condominio.id,
+                        status: newStatus,
+                        comprovante,
+                      });
+                    }}
                     isLoading={updateMutation.isPending}
                   />
                 </div>
