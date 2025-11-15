@@ -597,32 +597,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).send("É necessário cadastrar um imóvel primeiro");
       }
 
-      const { valor } = req.body;
+      const { valor, numero: manualNumero, vencimento: manualVencimento } = req.body;
       if (!valor) {
         return res.status(400).send("Valor é obrigatório");
       }
 
-      const lastParcela = await db
-        .select()
-        .from(parcelas)
-        .where(eq(parcelas.imovel_id, imovel.id))
-        .orderBy(desc(parcelas.numero))
-        .limit(1)
-        .then(rows => rows[0]);
-
-      let numero = 1;
+      let numero: number;
       let vencimento: Date;
 
-      if (lastParcela) {
-        numero = lastParcela.numero + 1;
-        const lastVencimento = new Date(lastParcela.vencimento);
-        vencimento = new Date(lastVencimento);
-        vencimento.setMonth(vencimento.getMonth() + 1);
-        vencimento.setDate(15);
+      if (manualNumero && manualVencimento) {
+        numero = parseInt(manualNumero);
+        vencimento = new Date(manualVencimento);
       } else {
-        vencimento = new Date();
-        vencimento.setMonth(vencimento.getMonth() + 1);
-        vencimento.setDate(15);
+        const lastParcela = await db
+          .select()
+          .from(parcelas)
+          .where(eq(parcelas.imovel_id, imovel.id))
+          .orderBy(desc(parcelas.numero))
+          .limit(1)
+          .then(rows => rows[0]);
+
+        if (lastParcela) {
+          numero = lastParcela.numero + 1;
+          const lastVencimento = new Date(lastParcela.vencimento);
+          vencimento = new Date(lastVencimento);
+          vencimento.setMonth(vencimento.getMonth() + 1);
+          vencimento.setDate(15);
+        } else {
+          numero = 1;
+          vencimento = new Date();
+          vencimento.setMonth(vencimento.getMonth() + 1);
+          vencimento.setDate(15);
+        }
       }
 
       const [parcela] = await db.insert(parcelas).values({

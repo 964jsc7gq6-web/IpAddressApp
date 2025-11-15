@@ -169,10 +169,10 @@ export const insertParcelaSchema = createInsertSchema(parcelas).omit({
   comprovante_id: true,
   data_registro: true,
   imovel_id: true,
-  numero: true,
-  vencimento: true
 }).extend({
   valor: z.number().positive("Valor deve ser positivo"),
+  numero: z.number().int().positive().optional(),
+  vencimento: z.string().optional(),
 });
 
 export type InsertParcela = z.infer<typeof insertParcelaSchema>;

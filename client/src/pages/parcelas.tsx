@@ -56,6 +56,8 @@ export default function Parcelas() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       valor: 0,
+      numero: undefined,
+      vencimento: undefined,
     },
   });
 
@@ -106,6 +108,12 @@ export default function Parcelas() {
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     const formData = new FormData();
     formData.append("valor", data.valor.toString());
+    if (data.numero) {
+      formData.append("numero", data.numero.toString());
+    }
+    if (data.vencimento) {
+      formData.append("vencimento", data.vencimento);
+    }
     if (comprovanteFile[0]) {
       formData.append("comprovante", comprovanteFile[0]);
     }
@@ -147,12 +155,60 @@ export default function Parcelas() {
               <DialogHeader>
                 <DialogTitle>Nova Parcela</DialogTitle>
                 <DialogDescription>
-                  O número e vencimento serão gerados automaticamente
+                  Preencha os campos ou deixe em branco para gerar automaticamente
                 </DialogDescription>
               </DialogHeader>
 
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="numero"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Número</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="number"
+                              placeholder="Auto"
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                              data-testid="input-numero"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Deixe vazio para auto
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="vencimento"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vencimento</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="date"
+                              value={field.value || ""}
+                              data-testid="input-vencimento"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Deixe vazio para auto
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="valor"
@@ -169,9 +225,6 @@ export default function Parcelas() {
                             data-testid="input-valor"
                           />
                         </FormControl>
-                        <FormDescription>
-                          Valor pode ser editado após criação
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
