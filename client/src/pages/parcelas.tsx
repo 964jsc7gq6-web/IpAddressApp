@@ -4,10 +4,11 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertParcelaSchema, type Parcela, type InsertParcela } from "@shared/schema";
+import { insertParcelaSchema, type ParcelaComComprovante, type InsertParcela } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentStatusControl } from "@/components/payment-status-control";
+import { ComprovanteViewer } from "@/components/comprovante-viewer";
 import {
   Card,
   CardContent,
@@ -45,7 +46,7 @@ export default function Parcelas() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [comprovanteFile, setComprovanteFile] = useState<File[]>([]);
 
-  const { data: parcelas, isLoading } = useQuery<Parcela[]>({
+  const { data: parcelas, isLoading } = useQuery<ParcelaComComprovante[]>({
     queryKey: ["/api/parcelas"],
   });
 
@@ -286,7 +287,7 @@ export default function Parcelas() {
                   </div>
                 )}
 
-                <div className="pt-3 border-t">
+                <div className="pt-3 border-t space-y-2">
                   <PaymentStatusControl
                     recordId={parcela.id}
                     currentStatus={parcela.status}
@@ -304,6 +305,14 @@ export default function Parcelas() {
                     }}
                     isLoading={updateMutation.isPending}
                   />
+                  
+                  {parcela.comprovante?.id && (
+                    <ComprovanteViewer
+                      comprovanteId={parcela.comprovante.id}
+                      nomeOriginal={parcela.comprovante.nome_original}
+                      mime={parcela.comprovante.mime}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

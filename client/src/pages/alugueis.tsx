@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
-import type { Aluguel } from "@shared/schema";
+import type { AluguelComComprovante } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { PaymentStatusControl } from "@/components/payment-status-control";
+import { ComprovanteViewer } from "@/components/comprovante-viewer";
 import {
   Card,
   CardContent,
@@ -25,7 +26,7 @@ export default function Alugueis() {
   const { isProprietario } = useAuth();
   const { toast } = useToast();
 
-  const { data: alugueis, isLoading } = useQuery<Aluguel[]>({
+  const { data: alugueis, isLoading } = useQuery<AluguelComComprovante[]>({
     queryKey: ["/api/alugueis"],
   });
 
@@ -169,7 +170,7 @@ export default function Alugueis() {
                   </div>
                 )}
 
-                <div className="pt-3 border-t">
+                <div className="pt-3 border-t space-y-2">
                   <PaymentStatusControl
                     recordId={aluguel.id}
                     currentStatus={aluguel.status}
@@ -187,6 +188,14 @@ export default function Alugueis() {
                     }}
                     isLoading={updateMutation.isPending}
                   />
+                  
+                  {aluguel.comprovante?.id && (
+                    <ComprovanteViewer
+                      comprovanteId={aluguel.comprovante.id}
+                      nomeOriginal={aluguel.comprovante.nome_original}
+                      mime={aluguel.comprovante.mime}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

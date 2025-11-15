@@ -10,7 +10,7 @@ export interface AuthRequest extends Request {
 
 export function generateToken(usuario: Usuario): string {
   return jwt.sign(
-    { id: usuario.id, email: usuario.email, papel: usuario.papel },
+    { id: usuario.id, email: usuario.email, papel: usuario.papel, parte_id: usuario.parte_id },
     JWT_SECRET,
     { expiresIn: "7d" }
   );
@@ -24,7 +24,7 @@ export function verifyToken(token: string): any {
   }
 }
 
-export function authMiddleware(
+export async function authMiddleware(
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -42,7 +42,30 @@ export function authMiddleware(
     return res.status(401).send("Token inválido ou expirado");
   }
 
-  req.usuario = decoded as Usuario;
+  if (!decoded.parte_id && decoded.id) {
+    try {
+      const { db } = await import("../db");
+      const { usuarios } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      
+      const usuarioCompleto = await db
+        .select()
+        .from(usuarios)
+        .where(eq(usuarios.id, decoded.id))
+        .then(rows => rows[0]);
+      
+      if (usuarioCompleto) {
+        req.usuario = usuarioCompleto;
+      } else {
+        req.usuario = decoded as Usuario;
+      }
+    } catch (error) {
+      req.usuario = decoded as Usuario;
+    }
+  } else {
+    req.usuario = decoded as Usuario;
+  }
+  
   next();
 }
 
@@ -82,4 +105,30 @@ export function validatePaymentStatusUpdate(
   }
 
   return {};
+}
+
+export async function ensureUsuarioPodeAcessarImovel(
+  usuario: Usuario,
+  imovelId: number,
+  db: any
+): Promise<boolean> {
+  const { imovelPartes } = await import("@shared/schema");
+  const { eq, and } = await import("drizzle-orm");
+  
+  if (!usuario.parte_id) {
+    return false;
+  }
+  
+  const acesso = await db
+    .select()
+    .from(imovelPartes)
+    .where(
+      and(
+        eq(imovelPartes.imovel_id, imovelId),
+        eq(imovelPartes.parte_id, usuario.parte_id)
+      )
+    )
+    .then((rows: any[]) => rows[0]);
+  
+  return !!acesso;
 }

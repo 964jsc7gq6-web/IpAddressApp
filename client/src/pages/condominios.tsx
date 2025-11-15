@@ -5,10 +5,11 @@ import { useAuth } from "@/hooks/use-auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { Condominio } from "@shared/schema";
+import type { CondominioComComprovante } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaymentStatusControl } from "@/components/payment-status-control";
+import { ComprovanteViewer } from "@/components/comprovante-viewer";
 import {
   Card,
   CardContent,
@@ -48,7 +49,7 @@ export default function Condominios() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: condominios, isLoading } = useQuery<Condominio[]>({
+  const { data: condominios, isLoading } = useQuery<CondominioComComprovante[]>({
     queryKey: ["/api/condominios"],
   });
 
@@ -261,7 +262,7 @@ export default function Condominios() {
                   </div>
                 )}
 
-                <div className="pt-3 border-t">
+                <div className="pt-3 border-t space-y-2">
                   <PaymentStatusControl
                     recordId={condominio.id}
                     currentStatus={condominio.status}
@@ -279,6 +280,14 @@ export default function Condominios() {
                     }}
                     isLoading={updateMutation.isPending}
                   />
+                  
+                  {condominio.comprovante?.id && (
+                    <ComprovanteViewer
+                      comprovanteId={condominio.comprovante.id}
+                      nomeOriginal={condominio.comprovante.nome_original}
+                      mime={condominio.comprovante.mime}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

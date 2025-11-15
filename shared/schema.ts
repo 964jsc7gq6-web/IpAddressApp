@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, serial, integer, numeric, boolean, timestamp, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, numeric, boolean, timestamp, varchar, unique } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -111,6 +111,33 @@ export const insertImovelSchema = createInsertSchema(imoveis).omit({ id: true })
 export type InsertImovel = z.infer<typeof insertImovelSchema>;
 export type Imovel = typeof imoveis.$inferSelect;
 
+// Tabela de junção: relaciona partes (e usuários) com imóveis
+export const imovelPartes = pgTable("imovel_partes", {
+  id: serial("id").primaryKey(),
+  imovel_id: integer("imovel_id").notNull().references(() => imoveis.id, { onDelete: "cascade" }),
+  parte_id: integer("parte_id").notNull().references(() => partes.id, { onDelete: "cascade" }),
+  papel_acesso: varchar("papel_acesso", { length: 50 }).notNull(), // "Proprietário" ou "Comprador"
+}, (table) => ({
+  uniqueImovelParte: unique().on(table.imovel_id, table.parte_id),
+}));
+
+export const imovelPartesRelations = relations(imovelPartes, ({ one }) => ({
+  imovel: one(imoveis, {
+    fields: [imovelPartes.imovel_id],
+    references: [imoveis.id],
+  }),
+  parte: one(partes, {
+    fields: [imovelPartes.parte_id],
+    references: [partes.id],
+  }),
+}));
+
+export const insertImovelParteSchema = createInsertSchema(imovelPartes).omit({ id: true }).extend({
+  papel_acesso: z.enum(["Proprietário", "Comprador"]),
+});
+export type InsertImovelParte = z.infer<typeof insertImovelParteSchema>;
+export type ImovelParte = typeof imovelPartes.$inferSelect;
+
 // Parcelas (controle financeiro de venda)
 export const parcelas = pgTable("parcelas", {
   id: serial("id").primaryKey(),
@@ -150,6 +177,13 @@ export const insertParcelaSchema = createInsertSchema(parcelas).omit({
 
 export type InsertParcela = z.infer<typeof insertParcelaSchema>;
 export type Parcela = typeof parcelas.$inferSelect;
+export type ParcelaComComprovante = Parcela & {
+  comprovante: {
+    id: number;
+    nome_original: string;
+    mime: string;
+  } | null;
+};
 
 // Aluguéis
 export const alugueis = pgTable("alugueis", {
@@ -190,6 +224,13 @@ export const insertAluguelSchema = createInsertSchema(alugueis).omit({
 
 export type InsertAluguel = z.infer<typeof insertAluguelSchema>;
 export type Aluguel = typeof alugueis.$inferSelect;
+export type AluguelComComprovante = Aluguel & {
+  comprovante: {
+    id: number;
+    nome_original: string;
+    mime: string;
+  } | null;
+};
 
 // Condomínio
 export const condominios = pgTable("condominios", {
@@ -230,3 +271,10 @@ export const insertCondominioSchema = createInsertSchema(condominios).omit({
 
 export type InsertCondominio = z.infer<typeof insertCondominioSchema>;
 export type Condominio = typeof condominios.$inferSelect;
+export type CondominioComComprovante = Condominio & {
+  comprovante: {
+    id: number;
+    nome_original: string;
+    mime: string;
+  } | null;
+};

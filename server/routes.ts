@@ -2,10 +2,12 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import express from "express";
 import bcrypt from "bcrypt";
+import path from "path";
+import fs from "fs";
 import { db } from "./db";
 import { eq, and, or, desc, asc } from "drizzle-orm";
 import { usuarios, partes, imoveis, parcelas, alugueis, condominios, arquivos, configuracoes } from "@shared/schema";
-import { authMiddleware, requireProprietario, generateToken, validatePaymentStatusUpdate, type AuthRequest } from "./middleware/auth";
+import { authMiddleware, requireProprietario, generateToken, validatePaymentStatusUpdate, ensureUsuarioPodeAcessarImovel, type AuthRequest } from "./middleware/auth";
 import { upload, validateFiles } from "./middleware/upload";
 import type { Usuario, Parte, Imovel, Parcela, Aluguel, Condominio, Arquivo } from "@shared/schema";
 
@@ -65,6 +67,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await db.update(usuarios).set({ senha: novaSenhaHash }).where(eq(usuarios.id, usuario.id));
 
       res.json({ message: "Senha alterada com sucesso" });
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/arquivos/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const usuario = req.usuario!;
+      
+      const arquivo = await db.select().from(arquivos).where(eq(arquivos.id, parseInt(id))).then(rows => rows[0]);
+      
+      if (!arquivo) {
+        return res.status(404).send("Arquivo não encontrado");
+      }
+      
+      const entidadeId = arquivo.entidade_id;
+      const entidade = arquivo.entidade;
+      let imovelId: number | null = null;
+      
+      if (entidade === "parcela") {
+        const parcela = await db.select().from(parcelas).where(eq(parcelas.id, entidadeId)).then(rows => rows[0]);
+        if (!parcela) {
+          return res.status(404).send("Parcela não encontrada");
+        }
+        imovelId = parcela.imovel_id;
+      } else if (entidade === "aluguel") {
+        const aluguel = await db.select().from(alugueis).where(eq(alugueis.id, entidadeId)).then(rows => rows[0]);
+        if (!aluguel) {
+          return res.status(404).send("Aluguel não encontrado");
+        }
+        imovelId = aluguel.imovel_id;
+      } else if (entidade === "condominio") {
+        const condominio = await db.select().from(condominios).where(eq(condominios.id, entidadeId)).then(rows => rows[0]);
+        if (!condominio) {
+          return res.status(404).send("Condomínio não encontrado");
+        }
+        imovelId = condominio.imovel_id;
+      } else if (entidade === "imovel") {
+        const imovel = await db.select().from(imoveis).where(eq(imoveis.id, entidadeId)).then(rows => rows[0]);
+        if (!imovel) {
+          return res.status(404).send("Imóvel não encontrado");
+        }
+        imovelId = imovel.id;
+      } else if (entidade === "parte") {
+        const parte = await db.select().from(partes).where(eq(partes.id, entidadeId)).then(rows => rows[0]);
+        if (!parte) {
+          return res.status(404).send("Parte não encontrada");
+        }
+        
+        if (usuario.papel !== "Proprietário" && usuario.parte_id !== parte.id) {
+          return res.status(403).send("Acesso negado a este arquivo");
+        }
+      }
+      
+      if (imovelId !== null) {
+        if (usuario.papel === "Proprietário") {
+          // Proprietários têm acesso administrativo a todos os arquivos
+        } else {
+          const temAcesso = await ensureUsuarioPodeAcessarImovel(usuario, imovelId, db);
+          if (!temAcesso) {
+            return res.status(403).send("Acesso negado a este arquivo");
+          }
+        }
+      }
+      
+      if (!fs.existsSync(arquivo.caminho)) {
+        return res.status(404).send("Arquivo não encontrado no sistema");
+      }
+      
+      res.setHeader("Content-Type", arquivo.mime);
+      res.setHeader("Content-Disposition", `inline; filename="${arquivo.nome_original}"`);
+      
+      const fileStream = fs.createReadStream(arquivo.caminho);
+      fileStream.pipe(res);
     } catch (error: any) {
       res.status(500).send(error.message);
     }
@@ -425,7 +502,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/parcelas", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const result = await db.select().from(parcelas).orderBy(asc(parcelas.numero));
+      const result = await db.select({
+        id: parcelas.id,
+        imovel_id: parcelas.imovel_id,
+        numero: parcelas.numero,
+        vencimento: parcelas.vencimento,
+        valor: parcelas.valor,
+        status: parcelas.status,
+        pago_em: parcelas.pago_em,
+        data_registro: parcelas.data_registro,
+        comprovante_id: parcelas.comprovante_id,
+        comprovante: {
+          id: arquivos.id,
+          nome_original: arquivos.nome_original,
+          mime: arquivos.mime,
+        },
+      })
+      .from(parcelas)
+      .leftJoin(arquivos, eq(parcelas.comprovante_id, arquivos.id))
+      .orderBy(asc(parcelas.numero));
+      
       res.json(result);
     } catch (error: any) {
       res.status(500).send(error.message);
@@ -568,7 +664,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/alugueis", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const result = await db.select().from(alugueis).orderBy(desc(alugueis.ano), desc(alugueis.mes));
+      const result = await db.select({
+        id: alugueis.id,
+        imovel_id: alugueis.imovel_id,
+        ano: alugueis.ano,
+        mes: alugueis.mes,
+        valor: alugueis.valor,
+        status: alugueis.status,
+        pago_em: alugueis.pago_em,
+        data_registro: alugueis.data_registro,
+        comprovante_id: alugueis.comprovante_id,
+        comprovante: {
+          id: arquivos.id,
+          nome_original: arquivos.nome_original,
+          mime: arquivos.mime,
+        },
+      })
+      .from(alugueis)
+      .leftJoin(arquivos, eq(alugueis.comprovante_id, arquivos.id))
+      .orderBy(desc(alugueis.ano), desc(alugueis.mes));
+      
       res.json(result);
     } catch (error: any) {
       res.status(500).send(error.message);
@@ -681,7 +796,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/condominios", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const result = await db.select().from(condominios).orderBy(desc(condominios.ano), desc(condominios.mes));
+      const result = await db.select({
+        id: condominios.id,
+        imovel_id: condominios.imovel_id,
+        ano: condominios.ano,
+        mes: condominios.mes,
+        valor: condominios.valor,
+        status: condominios.status,
+        pago_em: condominios.pago_em,
+        data_registro: condominios.data_registro,
+        comprovante_id: condominios.comprovante_id,
+        comprovante: {
+          id: arquivos.id,
+          nome_original: arquivos.nome_original,
+          mime: arquivos.mime,
+        },
+      })
+      .from(condominios)
+      .leftJoin(arquivos, eq(condominios.comprovante_id, arquivos.id))
+      .orderBy(desc(condominios.ano), desc(condominios.mes));
+      
       res.json(result);
     } catch (error: any) {
       res.status(500).send(error.message);
