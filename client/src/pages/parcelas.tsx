@@ -140,6 +140,24 @@ export default function Parcelas() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/parcelas/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/parcelas"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({ title: "Parcela excluída com sucesso" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao excluir parcela",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleUploadComprovante = () => {
     if (selectedParcelaId && newComprovanteFile[0]) {
       uploadComprovanteMutation.mutate({
@@ -403,6 +421,7 @@ export default function Parcelas() {
                   <PaymentStatusControl
                     recordId={parcela.id}
                     currentStatus={parcela.status as "pendente" | "pagamento_informado" | "pago"}
+                    hasComprovante={!!parcela.comprovante?.id}
                     onStatusChange={async (newStatus, comprovante) => {
                       const formData = new FormData();
                       formData.append('status', newStatus);
@@ -430,16 +449,40 @@ export default function Parcelas() {
                     )}
                     
                     {isProprietario && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenUploadDialog(parcela.id)}
-                        disabled={uploadComprovanteMutation.isPending}
-                        data-testid={`button-upload-comprovante-${parcela.id}`}
-                      >
-                        <Upload className="w-3 h-3 mr-1" />
-                        {parcela.comprovante?.id ? "Substituir" : "Anexar"} Comprovante
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenUploadDialog(parcela.id)}
+                          disabled={uploadComprovanteMutation.isPending}
+                          data-testid={`button-upload-comprovante-${parcela.id}`}
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          {parcela.comprovante?.id ? "Substituir" : "Anexar"} Comprovante
+                        </Button>
+                        
+                        {parcela.status !== 'pago' && (
+                          <ConfirmDialog
+                            trigger={
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={deleteMutation.isPending}
+                                data-testid={`button-excluir-${parcela.id}`}
+                              >
+                                <Trash2 className="w-3 h-3 mr-1" />
+                                Excluir
+                              </Button>
+                            }
+                            title="Confirmar exclusão"
+                            description="Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita."
+                            confirmText="Excluir"
+                            variant="destructive"
+                            onConfirm={() => deleteMutation.mutate(parcela.id)}
+                            disabled={deleteMutation.isPending}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

@@ -780,6 +780,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/parcelas/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      if (req.usuario.papel !== "Proprietário") {
+        return res.status(403).send("Apenas o proprietário pode excluir parcelas");
+      }
+
+      const { id } = req.params;
+      const parcela = await db.select().from(parcelas).where(eq(parcelas.id, parseInt(id))).then(rows => rows[0]);
+      
+      if (!parcela) {
+        return res.status(404).send("Parcela não encontrada");
+      }
+
+      if (parcela.status === 'pago') {
+        return res.status(400).send("Não é possível excluir parcelas que já foram pagas");
+      }
+
+      await db.delete(parcelas).where(eq(parcelas.id, parseInt(id)));
+      res.json({ message: "Parcela excluída com sucesso" });
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
   app.get("/api/alugueis", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const result = await db.select({
@@ -916,6 +940,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/alugueis/:id/comprovante", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).send("Arquivo não enviado");
+      }
+
+      const aluguel = await db.select().from(alugueis).where(eq(alugueis.id, parseInt(id))).then(rows => rows[0]);
+      if (!aluguel) {
+        return res.status(404).send("Aluguel não encontrado");
+      }
+
+      if (aluguel.comprovante_id) {
+        return res.status(400).send("Aluguel já possui um comprovante. Use PUT para substituir.");
+      }
+
+      const validation = validateFiles([req.file], {
+        maxCount: 1,
+        maxSizeMB: 2,
+        allowedTypes: ["pdf", "jpg", "jpeg", "png"],
+      });
+      if (validation) return res.status(400).send(validation);
+
+      const [arquivo] = await db.insert(arquivos).values({
+        nome_original: req.file.originalname,
+        caminho: req.file.path,
+        mime: req.file.mimetype,
+        tamanho: req.file.size,
+        entidade: "aluguel",
+        entidade_id: parseInt(id),
+        tipo: "comprovante",
+      }).returning();
+
+      await db.update(alugueis).set({ comprovante_id: arquivo.id }).where(eq(alugueis.id, parseInt(id)));
+
+      const updatedAluguel = await db.select().from(alugueis).where(eq(alugueis.id, parseInt(id))).then(rows => rows[0]);
+      res.json(updatedAluguel);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.put("/api/alugueis/:id/comprovante", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).send("Arquivo não enviado");
+      }
+
+      const aluguel = await db.select().from(alugueis).where(eq(alugueis.id, parseInt(id))).then(rows => rows[0]);
+      if (!aluguel) {
+        return res.status(404).send("Aluguel não encontrado");
+      }
+
+      const validation = validateFiles([req.file], {
+        maxCount: 1,
+        maxSizeMB: 2,
+        allowedTypes: ["pdf", "jpg", "jpeg", "png"],
+      });
+      if (validation) return res.status(400).send(validation);
+
+      const [arquivo] = await db.insert(arquivos).values({
+        nome_original: req.file.originalname,
+        caminho: req.file.path,
+        mime: req.file.mimetype,
+        tamanho: req.file.size,
+        entidade: "aluguel",
+        entidade_id: parseInt(id),
+        tipo: "comprovante",
+      }).returning();
+
+      await db.update(alugueis).set({ comprovante_id: arquivo.id }).where(eq(alugueis.id, parseInt(id)));
+
+      const updatedAluguel = await db.select().from(alugueis).where(eq(alugueis.id, parseInt(id))).then(rows => rows[0]);
+      res.json(updatedAluguel);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.delete("/api/alugueis/:id/comprovante", authMiddleware, requireProprietario, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const aluguel = await db.select().from(alugueis).where(eq(alugueis.id, parseInt(id))).then(rows => rows[0]);
+      if (!aluguel) {
+        return res.status(404).send("Aluguel não encontrado");
+      }
+
+      if (!aluguel.comprovante_id) {
+        return res.status(400).send("Aluguel não possui comprovante");
+      }
+
+      await db.update(alugueis).set({ comprovante_id: null }).where(eq(alugueis.id, parseInt(id)));
+
+      const updatedAluguel = await db.select().from(alugueis).where(eq(alugueis.id, parseInt(id))).then(rows => rows[0]);
+      res.json(updatedAluguel);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
   app.get("/api/condominios", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const result = await db.select({
@@ -1047,6 +1175,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       await db.delete(condominios).where(eq(condominios.id, parseInt(id)));
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.post("/api/condominios/:id/comprovante", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).send("Arquivo não enviado");
+      }
+
+      const condominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
+      if (!condominio) {
+        return res.status(404).send("Condomínio não encontrado");
+      }
+
+      if (condominio.comprovante_id) {
+        return res.status(400).send("Condomínio já possui um comprovante. Use PUT para substituir.");
+      }
+
+      const validation = validateFiles([req.file], {
+        maxCount: 1,
+        maxSizeMB: 2,
+        allowedTypes: ["pdf", "jpg", "jpeg", "png"],
+      });
+      if (validation) return res.status(400).send(validation);
+
+      const [arquivo] = await db.insert(arquivos).values({
+        nome_original: req.file.originalname,
+        caminho: req.file.path,
+        mime: req.file.mimetype,
+        tamanho: req.file.size,
+        entidade: "condominio",
+        entidade_id: parseInt(id),
+        tipo: "comprovante",
+      }).returning();
+
+      await db.update(condominios).set({ comprovante_id: arquivo.id }).where(eq(condominios.id, parseInt(id)));
+
+      const updatedCondominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
+      res.json(updatedCondominio);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.put("/api/condominios/:id/comprovante", authMiddleware, requireProprietario, upload.single("comprovante"), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!req.file) {
+        return res.status(400).send("Arquivo não enviado");
+      }
+
+      const condominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
+      if (!condominio) {
+        return res.status(404).send("Condomínio não encontrado");
+      }
+
+      const validation = validateFiles([req.file], {
+        maxCount: 1,
+        maxSizeMB: 2,
+        allowedTypes: ["pdf", "jpg", "jpeg", "png"],
+      });
+      if (validation) return res.status(400).send(validation);
+
+      const [arquivo] = await db.insert(arquivos).values({
+        nome_original: req.file.originalname,
+        caminho: req.file.path,
+        mime: req.file.mimetype,
+        tamanho: req.file.size,
+        entidade: "condominio",
+        entidade_id: parseInt(id),
+        tipo: "comprovante",
+      }).returning();
+
+      await db.update(condominios).set({ comprovante_id: arquivo.id }).where(eq(condominios.id, parseInt(id)));
+
+      const updatedCondominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
+      res.json(updatedCondominio);
+    } catch (error: any) {
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.delete("/api/condominios/:id/comprovante", authMiddleware, requireProprietario, async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      
+      const condominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
+      if (!condominio) {
+        return res.status(404).send("Condomínio não encontrado");
+      }
+
+      if (!condominio.comprovante_id) {
+        return res.status(400).send("Condomínio não possui comprovante");
+      }
+
+      await db.update(condominios).set({ comprovante_id: null }).where(eq(condominios.id, parseInt(id)));
+
+      const updatedCondominio = await db.select().from(condominios).where(eq(condominios.id, parseInt(id))).then(rows => rows[0]);
+      res.json(updatedCondominio);
     } catch (error: any) {
       res.status(500).send(error.message);
     }

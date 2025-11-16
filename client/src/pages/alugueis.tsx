@@ -32,7 +32,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, Edit, Trash } from "lucide-react";
+import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, Edit, Trash, Upload } from "lucide-react";
+import { FileUpload } from "@/components/file-upload";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 
@@ -46,6 +47,9 @@ export default function Alugueis() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAluguel, setEditingAluguel] = useState<AluguelComComprovante | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedAluguelId, setSelectedAluguelId] = useState<number | null>(null);
+  const [newComprovanteFile, setNewComprovanteFile] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear(),
@@ -117,6 +121,65 @@ export default function Alugueis() {
       });
     },
   });
+
+  const uploadComprovanteMutation = useMutation({
+    mutationFn: async ({ id, comprovante }: { id: number; comprovante: File }) => {
+      const formData = new FormData();
+      formData.append("comprovante", comprovante);
+      const aluguel = alugueis?.find(a => a.id === id);
+      const endpoint = aluguel?.comprovante?.id 
+        ? `/api/alugueis/${id}/comprovante` 
+        : `/api/alugueis/${id}/comprovante`;
+      const method = aluguel?.comprovante?.id ? "PUT" : "POST";
+      return apiRequest(method, endpoint, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/alugueis"] });
+      toast({ title: "Comprovante anexado com sucesso" });
+      setUploadDialogOpen(false);
+      setNewComprovanteFile([]);
+      setSelectedAluguelId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao anexar comprovante",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeComprovanteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/alugueis/${id}/comprovante`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/alugueis"] });
+      toast({ title: "Comprovante removido com sucesso" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao remover comprovante",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUploadComprovante = () => {
+    if (selectedAluguelId && newComprovanteFile[0]) {
+      uploadComprovanteMutation.mutate({
+        id: selectedAluguelId,
+        comprovante: newComprovanteFile[0],
+      });
+    }
+  };
+
+  const handleOpenUploadDialog = (aluguelId: number) => {
+    setSelectedAluguelId(aluguelId);
+    setNewComprovanteFile([]);
+    setUploadDialogOpen(true);
+  };
 
   const handleOpenDialog = (aluguel?: AluguelComComprovante) => {
     if (aluguel) {
@@ -345,6 +408,7 @@ export default function Alugueis() {
                   <PaymentStatusControl
                     recordId={aluguel.id}
                     currentStatus={aluguel.status as 'pendente' | 'pagamento_informado' | 'pago'}
+                    hasComprovante={!!aluguel.comprovante?.id}
                     onStatusChange={async (newStatus, comprovante) => {
                       const formData = new FormData();
                       formData.append('status', newStatus);
@@ -360,21 +424,98 @@ export default function Alugueis() {
                     isLoading={updateMutation.isPending}
                   />
                   
-                  {aluguel.comprovante?.id && (
-                    <FileViewer
-                      fileId={aluguel.comprovante.id}
-                      nomeOriginal={aluguel.comprovante.nome_original}
-                      mime={aluguel.comprovante.mime}
-                      label="Ver Comprovante"
-                      title="Comprovante de Pagamento"
-                    />
-                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    {aluguel.comprovante?.id && (
+                      <FileViewer
+                        fileId={aluguel.comprovante.id}
+                        nomeOriginal={aluguel.comprovante.nome_original}
+                        mime={aluguel.comprovante.mime}
+                        label="Ver Comprovante"
+                        title="Comprovante de Pagamento"
+                      />
+                    )}
+                    
+                    {isProprietario && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenUploadDialog(aluguel.id)}
+                          disabled={uploadComprovanteMutation.isPending}
+                          data-testid={`button-upload-comprovante-${aluguel.id}`}
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          {aluguel.comprovante?.id ? "Substituir" : "Anexar"} Comprovante
+                        </Button>
+                        
+                        {aluguel.comprovante?.id && (
+                          <ConfirmDialog
+                            trigger={
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={removeComprovanteMutation.isPending}
+                                data-testid={`button-remover-comprovante-${aluguel.id}`}
+                              >
+                                <Trash className="w-3 h-3 mr-1" />
+                                Remover Comprovante
+                              </Button>
+                            }
+                            title="Confirmar remoção"
+                            description="Tem certeza que deseja remover o comprovante? Esta ação não pode ser desfeita."
+                            confirmText="Remover"
+                            variant="destructive"
+                            onConfirm={() => removeComprovanteMutation.mutate(aluguel.id)}
+                            disabled={removeComprovanteMutation.isPending}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anexar Comprovante</DialogTitle>
+            <DialogDescription>
+              Envie o comprovante de pagamento deste aluguel
+            </DialogDescription>
+          </DialogHeader>
+
+          <FileUpload
+            maxFiles={1}
+            maxSizeMB={2}
+            accept={["pdf", "jpg", "jpeg", "png"]}
+            onFilesChange={setNewComprovanteFile}
+            label="Comprovante *"
+            hint="PDF ou imagem, máx 2MB"
+          />
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setUploadDialogOpen(false)}
+              disabled={uploadComprovanteMutation.isPending}
+              data-testid="button-cancel-comprovante"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUploadComprovante}
+              disabled={newComprovanteFile.length === 0 || uploadComprovanteMutation.isPending}
+              data-testid="button-enviar-comprovante"
+            >
+              {uploadComprovanteMutation.isPending ? "Enviando..." : "Enviar Comprovante"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

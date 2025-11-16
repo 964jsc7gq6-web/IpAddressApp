@@ -26,6 +26,7 @@ interface PaymentStatusControlProps {
   currentStatus: PaymentStatus;
   onStatusChange: (newStatus: PaymentStatus, comprovante?: File) => Promise<void>;
   isLoading?: boolean;
+  hasComprovante?: boolean;
 }
 
 export function PaymentStatusControl({
@@ -33,6 +34,7 @@ export function PaymentStatusControl({
   currentStatus,
   onStatusChange,
   isLoading = false,
+  hasComprovante = false,
 }: PaymentStatusControlProps) {
   const { isProprietario } = useAuth();
   const { toast } = useToast();
@@ -187,37 +189,51 @@ export function PaymentStatusControl({
         {isProprietario && (
           <>
             {(currentStatus === 'pendente' || currentStatus === 'pagamento_informado') && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              <>
+                {!hasComprovante ? (
                   <Button
                     size="sm"
-                    disabled={isLoading}
+                    disabled
                     data-testid={`button-marcar-pago-${recordId}`}
+                    title="É necessário anexar um comprovante antes de marcar como pago"
                   >
                     <CheckCircle2 className="w-3 h-3 mr-1" />
                     Marcar como Pago
                   </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent data-testid="alert-confirmar-pago">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Tem certeza que deseja marcar este registro como pago? Esta ação confirmará que o pagamento foi recebido.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel data-testid="button-cancelar-confirmar-pago">
-                      Cancelar
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleMarcarPago}
-                      data-testid="button-confirmar-pago"
-                    >
-                      Confirmar Pagamento
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                ) : (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        disabled={isLoading}
+                        data-testid={`button-marcar-pago-${recordId}`}
+                      >
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Marcar como Pago
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent data-testid="alert-confirmar-pago">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmar Pagamento</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja marcar este registro como pago? Esta ação confirmará que o pagamento foi recebido.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel data-testid="button-cancelar-confirmar-pago">
+                          Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleMarcarPago}
+                          data-testid="button-confirmar-pago"
+                        >
+                          Confirmar Pagamento
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </>
             )}
 
             {currentStatus !== 'pendente' && (

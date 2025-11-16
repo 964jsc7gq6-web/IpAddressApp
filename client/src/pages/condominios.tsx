@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, Building, Trash, Edit } from "lucide-react";
+import { Plus, Calendar, DollarSign, CheckCircle2, XCircle, Building, Trash, Edit, Upload } from "lucide-react";
+import { FileUpload } from "@/components/file-upload";
 import {
   Select,
   SelectContent,
@@ -46,6 +47,9 @@ export default function Condominios() {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCondominio, setEditingCondominio] = useState<CondominioComComprovante | null>(null);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [selectedCondominioId, setSelectedCondominioId] = useState<number | null>(null);
+  const [newComprovanteFile, setNewComprovanteFile] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     mes: new Date().getMonth() + 1,
     ano: new Date().getFullYear(),
@@ -117,6 +121,65 @@ export default function Condominios() {
       });
     },
   });
+
+  const uploadComprovanteMutation = useMutation({
+    mutationFn: async ({ id, comprovante }: { id: number; comprovante: File }) => {
+      const formData = new FormData();
+      formData.append("comprovante", comprovante);
+      const condominio = condominios?.find(c => c.id === id);
+      const endpoint = condominio?.comprovante?.id 
+        ? `/api/condominios/${id}/comprovante` 
+        : `/api/condominios/${id}/comprovante`;
+      const method = condominio?.comprovante?.id ? "PUT" : "POST";
+      return apiRequest(method, endpoint, formData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/condominios"] });
+      toast({ title: "Comprovante anexado com sucesso" });
+      setUploadDialogOpen(false);
+      setNewComprovanteFile([]);
+      setSelectedCondominioId(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao anexar comprovante",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeComprovanteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest("DELETE", `/api/condominios/${id}/comprovante`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/condominios"] });
+      toast({ title: "Comprovante removido com sucesso" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao remover comprovante",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleUploadComprovante = () => {
+    if (selectedCondominioId && newComprovanteFile[0]) {
+      uploadComprovanteMutation.mutate({
+        id: selectedCondominioId,
+        comprovante: newComprovanteFile[0],
+      });
+    }
+  };
+
+  const handleOpenUploadDialog = (condominioId: number) => {
+    setSelectedCondominioId(condominioId);
+    setNewComprovanteFile([]);
+    setUploadDialogOpen(true);
+  };
 
   const handleOpenDialog = (condominio?: CondominioComComprovante) => {
     if (condominio) {
@@ -345,6 +408,7 @@ export default function Condominios() {
                   <PaymentStatusControl
                     recordId={condominio.id}
                     currentStatus={condominio.status as 'pendente' | 'pagamento_informado' | 'pago'}
+                    hasComprovante={!!condominio.comprovante?.id}
                     onStatusChange={async (newStatus, comprovante) => {
                       const formData = new FormData();
                       formData.append('status', newStatus);
@@ -360,21 +424,98 @@ export default function Condominios() {
                     isLoading={updateMutation.isPending}
                   />
                   
-                  {condominio.comprovante?.id && (
-                    <FileViewer
-                      fileId={condominio.comprovante.id}
-                      nomeOriginal={condominio.comprovante.nome_original}
-                      mime={condominio.comprovante.mime}
-                      label="Ver Comprovante"
-                      title="Comprovante de Pagamento"
-                    />
-                  )}
+                  <div className="flex gap-2 flex-wrap">
+                    {condominio.comprovante?.id && (
+                      <FileViewer
+                        fileId={condominio.comprovante.id}
+                        nomeOriginal={condominio.comprovante.nome_original}
+                        mime={condominio.comprovante.mime}
+                        label="Ver Comprovante"
+                        title="Comprovante de Pagamento"
+                      />
+                    )}
+                    
+                    {isProprietario && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleOpenUploadDialog(condominio.id)}
+                          disabled={uploadComprovanteMutation.isPending}
+                          data-testid={`button-upload-comprovante-${condominio.id}`}
+                        >
+                          <Upload className="w-3 h-3 mr-1" />
+                          {condominio.comprovante?.id ? "Substituir" : "Anexar"} Comprovante
+                        </Button>
+                        
+                        {condominio.comprovante?.id && (
+                          <ConfirmDialog
+                            trigger={
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={removeComprovanteMutation.isPending}
+                                data-testid={`button-remover-comprovante-${condominio.id}`}
+                              >
+                                <Trash className="w-3 h-3 mr-1" />
+                                Remover Comprovante
+                              </Button>
+                            }
+                            title="Confirmar remoção"
+                            description="Tem certeza que deseja remover o comprovante? Esta ação não pode ser desfeita."
+                            confirmText="Remover"
+                            variant="destructive"
+                            onConfirm={() => removeComprovanteMutation.mutate(condominio.id)}
+                            disabled={removeComprovanteMutation.isPending}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anexar Comprovante</DialogTitle>
+            <DialogDescription>
+              Envie o comprovante de pagamento deste condomínio
+            </DialogDescription>
+          </DialogHeader>
+
+          <FileUpload
+            maxFiles={1}
+            maxSizeMB={2}
+            accept={["pdf", "jpg", "jpeg", "png"]}
+            onFilesChange={setNewComprovanteFile}
+            label="Comprovante *"
+            hint="PDF ou imagem, máx 2MB"
+          />
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setUploadDialogOpen(false)}
+              disabled={uploadComprovanteMutation.isPending}
+              data-testid="button-cancel-comprovante"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUploadComprovante}
+              disabled={newComprovanteFile.length === 0 || uploadComprovanteMutation.isPending}
+              data-testid="button-enviar-comprovante"
+            >
+              {uploadComprovanteMutation.isPending ? "Enviando..." : "Enviar Comprovante"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

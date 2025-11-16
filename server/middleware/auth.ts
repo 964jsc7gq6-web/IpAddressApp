@@ -97,6 +97,13 @@ export function validatePaymentStatusUpdate(
     };
   }
 
+  if (status === 'pago' && !hasFile && !hasExistingComprovante) {
+    return {
+      error: "É necessário anexar um comprovante antes de marcar como pago",
+      statusCode: 400
+    };
+  }
+
   if (status === 'pagamento_informado' && !hasFile && !hasExistingComprovante) {
     return {
       error: "Comprovante é obrigatório para status 'pagamento_informado'",
