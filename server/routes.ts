@@ -1112,13 +1112,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const config = await db
         .select()
         .from(configuracoes)
+        .orderBy(desc(configuracoes.id))
         .limit(1)
         .then(rows => rows[0]);
+
+      console.log('[CONFIG STATUS]', {
+        config,
+        configurado: config?.configuracao_inicial || false,
+      });
 
       res.json({
         configurado: config?.configuracao_inicial || false,
       });
     } catch (error: any) {
+      console.error('[CONFIG STATUS ERROR]', error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Endpoint para resetar configuração (apenas em desenvolvimento)
+  app.delete("/api/configuracao/reset", async (req, res) => {
+    try {
+      if (process.env.NODE_ENV !== 'development') {
+        return res.status(403).send("Este endpoint só está disponível em desenvolvimento");
+      }
+
+      await db.delete(configuracoes);
+      console.log('[CONFIG] Configuração resetada');
+      
+      res.json({ message: "Configuração resetada com sucesso" });
+    } catch (error: any) {
+      console.error('[CONFIG RESET ERROR]', error);
       res.status(500).send(error.message);
     }
   });
@@ -1126,6 +1150,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/configuracao/wizard", async (req, res) => {
     try {
       const { proprietario, comprador, imovel, dataInicioContrato } = req.body;
+
+      console.log('[WIZARD] Iniciando wizard com dados:', {
+        proprietario: proprietario?.nome,
+        comprador: comprador?.nome,
+        imovel: imovel?.nome,
+        dataInicioContrato,
+      });
 
       // Validações básicas
       if (!proprietario?.nome || !proprietario?.email || !proprietario?.senha || !proprietario?.cpf) {
@@ -1208,13 +1239,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .returning();
 
         // 5. Criar configuração inicial
-        await tx.insert(configuracoes).values({
+        const [configCriada] = await tx.insert(configuracoes).values({
           configuracao_inicial: true,
           data_inicio_contrato: new Date(dataInicioContrato),
-        });
+        }).returning();
+
+        console.log('[WIZARD] Configuração criada:', configCriada);
 
         return usuarioProprietario;
       });
+
+      console.log('[WIZARD] Wizard finalizado com sucesso');
 
       res.json({
         message: "Configuração inicial concluída com sucesso",
@@ -1226,6 +1261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
     } catch (error: any) {
+      console.error('[WIZARD ERROR]', error);
       res.status(500).send(error.message);
     }
   });
