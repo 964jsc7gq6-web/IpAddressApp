@@ -55,7 +55,7 @@ O projeto já possui uma migration inicial (`migrations/0000_*.sql`) que represe
 
 ```bash
 # 1. Gere uma nova migration (sem aplicar)
-npx drizzle-kit generate
+pnpm drizzle-kit generate
 
 # 2. Se aparecer "No schema changes detected", está sincronizado
 # 3. Se gerar uma migration, revise as diferenças
@@ -86,7 +86,7 @@ rm migrations/0001_*.sql  # se aplicável
 Depois de alterar `shared/schema.ts`, gere uma migration:
 
 ```bash
-npx drizzle-kit generate
+pnpm drizzle-kit generate
 ```
 
 Isso irá:
@@ -104,7 +104,7 @@ Isso irá:
 Para aplicar todas as migrations que ainda não foram executadas:
 
 ```bash
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 Isso irá:
@@ -118,7 +118,7 @@ Isso irá:
 Para explorar o banco visualmente:
 
 ```bash
-npx drizzle-kit studio
+pnpm drizzle-kit studio
 ```
 
 Abre uma interface web em `https://local.drizzle.studio` para visualizar tabelas, dados e relações.
@@ -144,7 +144,7 @@ export const imoveis = pgTable("imoveis", {
 #### Passo 2: Gerar Migration
 
 ```bash
-npx drizzle-kit generate
+pnpm drizzle-kit generate
 ```
 
 Você verá algo como:
@@ -169,7 +169,7 @@ ALTER TABLE "imoveis" ADD COLUMN "cep" text;
 #### Passo 4: Testar em Desenvolvimento
 
 ```bash
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 Verifique se a aplicação funciona corretamente com a mudança.
@@ -185,7 +185,7 @@ git push
 
 2. No ambiente de produção, execute:
 ```bash
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 ## Boas Práticas
@@ -219,9 +219,9 @@ export const partes = pgTable("partes", {
 ```
 
 ```bash
-npx drizzle-kit generate
+pnpm drizzle-kit generate
 # Migration gerada: ALTER TABLE "partes" ADD COLUMN "telefone_alternativo" text;
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 ### Adicionar Coluna NOT NULL com Default
@@ -235,9 +235,9 @@ export const usuarios = pgTable("usuarios", {
 ```
 
 ```bash
-npx drizzle-kit generate
+pnpm drizzle-kit generate
 # Migration gerada: ALTER TABLE "usuarios" ADD COLUMN "ativo" boolean DEFAULT true NOT NULL;
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 ### Criar Nova Tabela
@@ -252,9 +252,9 @@ export const configuracoes = pgTable("configuracoes", {
 ```
 
 ```bash
-npx drizzle-kit generate
+pnpm drizzle-kit generate
 # Migration gerada: CREATE TABLE "configuracoes" (...);
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 ### Adicionar Índice
@@ -269,9 +269,9 @@ export const parcelas = pgTable("parcelas", {
 ```
 
 ```bash
-npx drizzle-kit generate
+pnpm drizzle-kit generate
 # Migration gerada: CREATE INDEX "parcelas_status_idx" ON "parcelas" ("status");
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 ## Troubleshooting
@@ -330,8 +330,8 @@ O processo recomendado é:
 1. **Desenvolvimento local**:
    ```bash
    # Alterar schema
-   npx drizzle-kit generate
-   npx drizzle-kit migrate
+   pnpm drizzle-kit generate
+   pnpm drizzle-kit migrate
    ```
 
 2. **Commit e Push**:
@@ -343,7 +343,7 @@ O processo recomendado é:
 
 3. **Em Produção** (após deploy do código):
    ```bash
-   npx drizzle-kit migrate
+   pnpm drizzle-kit migrate
    ```
 
 ## Uso em CI/CD e Automação
@@ -357,7 +357,7 @@ Para uso em pipelines de CI/CD, onde não há interação do usuário:
 export DATABASE_URL="postgresql://user:pass@host:5432/dbname"
 
 # Aplicar migrations automaticamente (sem confirmação)
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 ### Pipeline de Deploy Exemplo
@@ -369,19 +369,22 @@ deploy:
     - name: Checkout código
       run: git checkout main
     
+    - name: Instalar pnpm
+      run: npm install -g pnpm
+    
     - name: Instalar dependências
-      run: npm ci
+      run: pnpm install --frozen-lockfile
     
     - name: Aplicar migrations
       env:
         DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-      run: npx drizzle-kit migrate
+      run: pnpm drizzle-kit migrate
     
     - name: Build aplicação
-      run: npm run build
+      run: pnpm run build
     
     - name: Deploy
-      run: npm run deploy
+      run: pnpm run deploy
 ```
 
 ### Script de Deploy Seguro
@@ -404,7 +407,7 @@ echo "Criando backup..."
 
 # Aplicar migrations
 echo "Aplicando migrations..."
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 
 echo "Migrations aplicadas com sucesso!"
 ```
@@ -418,7 +421,7 @@ Antes de fazer deploy, valide as migrations:
 git status migrations/
 
 # 2. Gerar migration de teste para confirmar schema está sincronizado
-npx drizzle-kit generate
+pnpm drizzle-kit generate
 
 # 3. Se não houver mudanças, o schema está sincronizado
 # 4. Se houver mudanças não intencionais, revisar antes de prosseguir
@@ -440,7 +443,7 @@ DATABASE_URL=postgresql://prod_user:pass@prod-host:5432/app_ipe_prod
 ```bash
 # Usar em CI/CD
 source .env.production
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 ### Aplicar Migration em Novo Ambiente
@@ -452,20 +455,20 @@ Ao configurar um novo ambiente (staging, produção nova, etc):
 export DATABASE_URL="postgresql://user:pass@new-host:5432/new_db"
 
 # 2. Aplicar TODAS as migrations desde o início
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 
 # 3. Verificar que todas as tabelas foram criadas
-npx drizzle-kit studio
+pnpm drizzle-kit studio
 ```
 
 ## Referência Rápida
 
 | Comando | Descrição | Quando Usar |
 |---------|-----------|-------------|
-| `npx drizzle-kit generate` | Gera migration a partir das mudanças no schema | Após alterar `shared/schema.ts` |
-| `npx drizzle-kit migrate` | Aplica migrations pendentes | Em dev após gerar, e em produção após deploy |
-| `npx drizzle-kit studio` | Abre interface visual do banco | Para explorar dados e estrutura |
-| `npx drizzle-kit push` | Sincroniza schema diretamente (⚠️ APENAS DEV) | Prototipagem rápida em desenvolvimento |
+| `pnpm drizzle-kit generate` | Gera migration a partir das mudanças no schema | Após alterar `shared/schema.ts` |
+| `pnpm drizzle-kit migrate` | Aplica migrations pendentes | Em dev após gerar, e em produção após deploy |
+| `pnpm drizzle-kit studio` | Abre interface visual do banco | Para explorar dados e estrutura |
+| `pnpm drizzle-kit push` | Sincroniza schema diretamente (⚠️ APENAS DEV) | Prototipagem rápida em desenvolvimento |
 
 ## Arquivos Importantes
 

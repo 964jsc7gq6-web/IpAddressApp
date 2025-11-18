@@ -86,7 +86,7 @@ O parâmetro `--frozen-lockfile` garante que as versões exatas serão instalada
 
 ```bash
 # Aplicar todas as migrations
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 Isso criará todas as tabelas necessárias no banco de dados.
@@ -166,7 +166,7 @@ pnpm install --frozen-lockfile
 
 ```bash
 # Aplicar migrations pendentes
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 ```
 
 **IMPORTANTE**: 
@@ -370,7 +370,7 @@ Use este checklist a cada deploy:
 - [ ] Backup do banco de dados realizado
 - [ ] Código atualizado via git pull
 - [ ] Dependências atualizadas (pnpm install)
-- [ ] Migrations aplicadas (npx drizzle-kit migrate)
+- [ ] Migrations aplicadas (pnpm drizzle-kit migrate)
 - [ ] Build executado (pnpm run build)
 - [ ] Aplicação reiniciada
 - [ ] Logs verificados (sem erros)
@@ -490,7 +490,7 @@ pnpm install --frozen-lockfile
 
 # 5. Aplicar migrations
 echo "5. Aplicando migrations..."
-npx drizzle-kit migrate
+pnpm drizzle-kit migrate
 
 # 6. Build
 echo "6. Compilando aplicação..."
@@ -546,7 +546,7 @@ pm2 set pm2-logrotate:retain 7
 2. **Parar** a aplicação
 3. **Atualizar** código (git pull)
 4. **Instalar** dependências (pnpm install)
-5. **Migrar** banco (npx drizzle-kit migrate)
+5. **Migrar** banco (pnpm drizzle-kit migrate)
 6. **Compilar** (pnpm run build)
 7. **Reiniciar** aplicação
 8. **Verificar** funcionamento

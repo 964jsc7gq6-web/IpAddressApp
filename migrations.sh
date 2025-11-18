@@ -25,7 +25,7 @@ echo ""
 case "$1" in
   generate)
     echo "Gerando migration a partir das mudancas no schema..."
-    npx drizzle-kit generate
+    pnpm drizzle-kit generate
     echo ""
     echo "Migration gerada! Revise o arquivo SQL em migrations/"
     echo "IMPORTANTE: Verifique o SQL antes de aplicar em qualquer ambiente"
@@ -39,7 +39,7 @@ case "$1" in
     echo
     if [[ $REPLY =~ ^[Ss]$ ]]; then
       echo "Aplicando migrations pendentes..."
-      npx drizzle-kit migrate
+      pnpm drizzle-kit migrate
       echo ""
       echo "Migrations aplicadas com sucesso!"
     else
@@ -51,7 +51,7 @@ case "$1" in
   studio)
     echo "Abrindo Drizzle Studio..."
     echo "Acesse: https://local.drizzle.studio"
-    npx drizzle-kit studio
+    pnpm drizzle-kit studio
     ;;
   
   push)
@@ -62,7 +62,7 @@ case "$1" in
     read -p "Deseja continuar? (s/N) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Ss]$ ]]; then
-      npx drizzle-kit push
+      pnpm drizzle-kit push
     else
       echo "Operacao cancelada."
       exit 0

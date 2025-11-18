@@ -10,6 +10,17 @@ The application is designed with a mobile-first approach, implementing Material 
 
 Preferred communication style: Simple, everyday language.
 
+## Development Setup
+
+**Package Manager:**
+- pnpm (preferred) - Fast, disk-efficient package manager
+- Lock file: `pnpm-lock.yaml`
+- Commands: Use `pnpm install`, `pnpm run dev`, `pnpm run build`
+
+**Deploy Documentation:**
+- See `DEPLOY.md` for complete production deployment guide
+- Includes setup, configuration, migrations, monitoring, and troubleshooting
+
 ## System Architecture
 
 ### Frontend Architecture
