@@ -21,6 +21,21 @@ Preferred communication style: Simple, everyday language.
 - See `DEPLOY.md` for complete production deployment guide
 - Includes setup, configuration, migrations, monitoring, and troubleshooting
 
+**Environment Configuration:**
+- Application uses `.env` file for all configuration (never committed to Git)
+- Copy `.env.example` to `.env` and configure for your environment
+- Required variables:
+  - `DATABASE_URL` - PostgreSQL connection string (obrigatório)
+  - `JWT_SECRET` - JWT token secret, minimum 32 characters (obrigatório em qualquer ambiente)
+  - `SESSION_SECRET` - Session secret for secure sessions
+  - `NODE_ENV` - Environment mode (development | production)
+- Optional variables with defaults:
+  - `PORT` - Server port (default: 5000)
+  - `HOST` - Server host (default: 0.0.0.0)
+  - `UPLOADS_DIR` - Upload directory (default: uploads)
+- Security: JWT_SECRET has no fallback - application will fail to start if not configured
+- Package `dotenv` loads environment variables from `.env` file
+
 ## System Architecture
 
 ### Frontend Architecture
