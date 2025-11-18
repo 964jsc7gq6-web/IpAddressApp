@@ -144,13 +144,16 @@ Preferred communication style: Simple, everyday language.
 
 **Database Migrations:**
 - Migration-based schema evolution for production safety
+- **Prerequisites**: Requires `DATABASE_URL` environment variable (configured automatically in Replit dev environment)
 - Commands:
   - `npx drizzle-kit generate` - Generate migration from schema changes
   - `npx drizzle-kit migrate` - Apply pending migrations
   - `npx drizzle-kit studio` - Visual database explorer
   - `npx drizzle-kit push` - Direct sync (development only, unsafe for production)
-- Helper script: `./migrations.sh [generate|migrate|studio|push]`
+- Helper script: `./migrations.sh [generate|migrate|studio|push]` (validates DATABASE_URL, shows target host)
 - Migration files stored in `migrations/` directory
+- Initial migration: `migrations/0000_*.sql` captures current schema state (9 tables)
+- CI/CD support: Non-interactive mode for automated deployments
 - See `MIGRATIONS.md` for complete guide on safe database evolution
 
 **PWA Features:**

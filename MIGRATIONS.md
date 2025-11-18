@@ -4,6 +4,66 @@
 
 Este documento descreve como gerenciar mudanças na estrutura do banco de dados de forma segura e controlada, tanto em desenvolvimento quanto em produção.
 
+## Pré-requisitos e Configuração
+
+### Variável DATABASE_URL
+
+Todos os comandos de migration requerem que a variável de ambiente `DATABASE_URL` esteja configurada. Esta é a string de conexão PostgreSQL.
+
+**No ambiente Replit (desenvolvimento):**
+```bash
+# DATABASE_URL já está configurado automaticamente
+# Não é necessário fazer nada
+```
+
+**Em produção (deploy):**
+```bash
+# Configurar DATABASE_URL apontando para o banco de produção
+export DATABASE_URL="postgresql://usuario:senha@host:porta/database"
+```
+
+**Para múltiplos ambientes:**
+```bash
+# Development
+export DATABASE_URL="postgresql://dev_user:pass@dev-host:5432/app_ipe_dev"
+
+# Staging
+export DATABASE_URL="postgresql://staging_user:pass@staging-host:5432/app_ipe_staging"
+
+# Production
+export DATABASE_URL="postgresql://prod_user:pass@prod-host:5432/app_ipe_prod"
+```
+
+### Verificar Configuração
+
+Para verificar que o DATABASE_URL está configurado corretamente:
+
+```bash
+# Mostrar apenas o host (sem expor credenciais)
+echo $DATABASE_URL | sed -E 's#.*@([^:/]+).*#\1#'
+```
+
+### Migration Inicial
+
+O projeto já possui uma migration inicial (`migrations/0000_*.sql`) que representa o estado atual do banco. Esta migration:
+
+- Foi gerada a partir do schema em `shared/schema.ts`
+- Contém todas as 9 tabelas do sistema
+- Deve ser aplicada em novos ambientes antes de executar a aplicação
+
+**Para verificar que a migration inicial está sincronizada com o schema:**
+
+```bash
+# 1. Gere uma nova migration (sem aplicar)
+npx drizzle-kit generate
+
+# 2. Se aparecer "No schema changes detected", está sincronizado
+# 3. Se gerar uma migration, revise as diferenças
+
+# 4. Descarte a migration de teste se não houver mudanças reais
+rm migrations/0001_*.sql  # se aplicável
+```
+
 ## Conceitos Importantes
 
 ### Migrations vs Push
@@ -285,6 +345,118 @@ O processo recomendado é:
    ```bash
    npx drizzle-kit migrate
    ```
+
+## Uso em CI/CD e Automação
+
+### Modo Não-Interativo
+
+Para uso em pipelines de CI/CD, onde não há interação do usuário:
+
+```bash
+# Em ambientes de automação, configure DATABASE_URL
+export DATABASE_URL="postgresql://user:pass@host:5432/dbname"
+
+# Aplicar migrations automaticamente (sem confirmação)
+npx drizzle-kit migrate
+```
+
+### Pipeline de Deploy Exemplo
+
+```yaml
+# Exemplo: GitHub Actions / GitLab CI / Similar
+deploy:
+  steps:
+    - name: Checkout código
+      run: git checkout main
+    
+    - name: Instalar dependências
+      run: npm ci
+    
+    - name: Aplicar migrations
+      env:
+        DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+      run: npx drizzle-kit migrate
+    
+    - name: Build aplicação
+      run: npm run build
+    
+    - name: Deploy
+      run: npm run deploy
+```
+
+### Script de Deploy Seguro
+
+Crie um script `deploy-migrations.sh` para uso em produção:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+# Validar ambiente
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "ERRO: DATABASE_URL não configurado"
+  exit 1
+fi
+
+# Backup antes de migrations (recomendado)
+echo "Criando backup..."
+# pg_dump $DATABASE_URL > backup-$(date +%Y%m%d-%H%M%S).sql
+
+# Aplicar migrations
+echo "Aplicando migrations..."
+npx drizzle-kit migrate
+
+echo "Migrations aplicadas com sucesso!"
+```
+
+### Validação Pré-Deploy
+
+Antes de fazer deploy, valide as migrations:
+
+```bash
+# 1. Verificar que não há migrations pendentes locais não commitadas
+git status migrations/
+
+# 2. Gerar migration de teste para confirmar schema está sincronizado
+npx drizzle-kit generate
+
+# 3. Se não houver mudanças, o schema está sincronizado
+# 4. Se houver mudanças não intencionais, revisar antes de prosseguir
+```
+
+### Configuração para Múltiplos Ambientes
+
+```bash
+# .env.development
+DATABASE_URL=postgresql://dev_user:pass@localhost:5432/app_ipe_dev
+
+# .env.staging
+DATABASE_URL=postgresql://staging_user:pass@staging-host:5432/app_ipe_staging
+
+# .env.production
+DATABASE_URL=postgresql://prod_user:pass@prod-host:5432/app_ipe_prod
+```
+
+```bash
+# Usar em CI/CD
+source .env.production
+npx drizzle-kit migrate
+```
+
+### Aplicar Migration em Novo Ambiente
+
+Ao configurar um novo ambiente (staging, produção nova, etc):
+
+```bash
+# 1. Configurar DATABASE_URL
+export DATABASE_URL="postgresql://user:pass@new-host:5432/new_db"
+
+# 2. Aplicar TODAS as migrations desde o início
+npx drizzle-kit migrate
+
+# 3. Verificar que todas as tabelas foram criadas
+npx drizzle-kit studio
+```
 
 ## Referência Rápida
 
