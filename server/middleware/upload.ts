@@ -2,7 +2,11 @@ import multer from "multer";
 import { join } from "path";
 import { existsSync, mkdirSync } from "fs";
 
-const uploadsDir = join(process.cwd(), "uploads");
+// Diretório de uploads configurável via variável de ambiente
+const uploadsDir = process.env.UPLOADS_DIR 
+  ? join(process.cwd(), process.env.UPLOADS_DIR)
+  : join(process.cwd(), "uploads");
+
 if (!existsSync(uploadsDir)) {
   mkdirSync(uploadsDir, { recursive: true });
 }

@@ -19,19 +19,48 @@ Este documento descreve como fazer deploy e atualizar a aplicação App Ipê em 
 O arquivo `.env` de produção deve conter:
 
 ```bash
-# Banco de Dados (obrigatório)
+# ======================
+# BANCO DE DADOS
+# ======================
+# URL de conexão com PostgreSQL (OBRIGATÓRIO)
+# Formato: postgresql://usuario:senha@host:porta/database
 DATABASE_URL=postgresql://usuario:senha@host:porta/database
 
-# Sessão e JWT (obrigatório)
+# ======================
+# SEGURANÇA
+# ======================
+# Segredo para sessões (OBRIGATÓRIO, mínimo 32 caracteres)
+# Gere com: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 SESSION_SECRET=sua-chave-secreta-aqui-minimo-32-caracteres
+
+# Segredo para tokens JWT (OBRIGATÓRIO, mínimo 32 caracteres)
+# Gere com: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 JWT_SECRET=sua-chave-jwt-secreta-aqui-minimo-32-caracteres
 
-# Ambiente (obrigatório)
+# ======================
+# SERVIDOR
+# ======================
+# Ambiente de execução (OBRIGATÓRIO)
 NODE_ENV=production
 
-# Porta da aplicação (opcional, padrão: 5000)
+# Porta do servidor (opcional, padrão: 5000)
 PORT=5000
+
+# Host de bind (opcional, padrão: 0.0.0.0)
+HOST=0.0.0.0
+
+# ======================
+# ARMAZENAMENTO
+# ======================
+# Diretório para armazenar arquivos enviados (opcional, padrão: uploads)
+UPLOADS_DIR=uploads
 ```
+
+**⚠️ ATENÇÃO**: Em produção:
+- `JWT_SECRET` é **obrigatório** - a aplicação não iniciará sem ele
+- Use senhas fortes e únicas para `SESSION_SECRET` e `JWT_SECRET`
+- Nunca compartilhe ou versione o arquivo `.env`
+- Mantenha o `DATABASE_URL` seguro
 
 ## Configuração Inicial do Servidor
 

@@ -2,7 +2,14 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import type { Usuario } from "@shared/schema";
 
-const JWT_SECRET = process.env.JWT_SECRET || "app-ipe-secret-key-2024";
+// JWT_SECRET é obrigatório em qualquer ambiente
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    "JWT_SECRET não está configurado. Configure a variável de ambiente JWT_SECRET no arquivo .env"
+  );
+}
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 export interface AuthRequest extends Request {
   usuario?: Usuario;
@@ -52,7 +59,7 @@ export async function authMiddleware(
         .select()
         .from(usuarios)
         .where(eq(usuarios.id, decoded.id))
-        .then(rows => rows[0]);
+        .then((rows: Usuario[]) => rows[0]);
       
       if (usuarioCompleto) {
         req.usuario = usuarioCompleto;
