@@ -138,7 +138,20 @@ Preferred communication style: Simple, everyday language.
 - `@replit/vite-plugin-*`: Replit-specific development plugins
 
 **Database:**
-- PostgreSQL configuration present via `@neondatabase/serverless` and Drizzle config, though currently using SQLite (the system is designed to potentially migrate to Postgres later)
+- PostgreSQL via `@neondatabase/serverless` (Neon-backed)
+- Drizzle ORM for type-safe database operations
+- Drizzle Kit for schema migrations
+
+**Database Migrations:**
+- Migration-based schema evolution for production safety
+- Commands:
+  - `npx drizzle-kit generate` - Generate migration from schema changes
+  - `npx drizzle-kit migrate` - Apply pending migrations
+  - `npx drizzle-kit studio` - Visual database explorer
+  - `npx drizzle-kit push` - Direct sync (development only, unsafe for production)
+- Helper script: `./migrations.sh [generate|migrate|studio|push]`
+- Migration files stored in `migrations/` directory
+- See `MIGRATIONS.md` for complete guide on safe database evolution
 
 **PWA Features:**
 - Custom service worker for offline caching
