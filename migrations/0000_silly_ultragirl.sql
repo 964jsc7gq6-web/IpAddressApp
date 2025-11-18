@@ -1,4 +1,4 @@
-CREATE TABLE "alugueis" (
+CREATE TABLE IF NOT EXISTS "alugueis" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"imovel_id" integer NOT NULL,
 	"mes" integer NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE "alugueis" (
 	"comprovante_id" integer
 );
 --> statement-breakpoint
-CREATE TABLE "arquivos" (
+CREATE TABLE IF NOT EXISTS "arquivos" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"nome_original" text NOT NULL,
 	"caminho" text NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE "arquivos" (
 	"tipo" text
 );
 --> statement-breakpoint
-CREATE TABLE "condominios" (
+CREATE TABLE IF NOT EXISTS "condominios" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"imovel_id" integer NOT NULL,
 	"mes" integer NOT NULL,
@@ -34,14 +34,14 @@ CREATE TABLE "condominios" (
 	"comprovante_id" integer
 );
 --> statement-breakpoint
-CREATE TABLE "configuracoes" (
+CREATE TABLE IF NOT EXISTS "configuracoes" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"configuracao_inicial" boolean DEFAULT false NOT NULL,
 	"data_inicio_contrato" timestamp,
 	"criado_em" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "imoveis" (
+CREATE TABLE IF NOT EXISTS "imoveis" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"nome" text NOT NULL,
 	"endereco" text NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE "imoveis" (
 	"foto_capa_id" integer
 );
 --> statement-breakpoint
-CREATE TABLE "imovel_partes" (
+CREATE TABLE IF NOT EXISTS "imovel_partes" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"imovel_id" integer NOT NULL,
 	"parte_id" integer NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE "imovel_partes" (
 	CONSTRAINT "imovel_partes_imovel_id_parte_id_unique" UNIQUE("imovel_id","parte_id")
 );
 --> statement-breakpoint
-CREATE TABLE "parcelas" (
+CREATE TABLE IF NOT EXISTS "parcelas" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"imovel_id" integer NOT NULL,
 	"numero" integer NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE "parcelas" (
 	"comprovante_id" integer
 );
 --> statement-breakpoint
-CREATE TABLE "partes" (
+CREATE TABLE IF NOT EXISTS "partes" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"tipo" varchar(50) NOT NULL,
 	"nome" text NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE "partes" (
 	"cpf" varchar(14) NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "usuarios" (
+CREATE TABLE IF NOT EXISTS "usuarios" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"email" varchar(255) NOT NULL,
 	"senha" text NOT NULL,
