@@ -241,7 +241,7 @@ export default function Alugueis() {
             <DialogTrigger asChild>
               <Button
                 onClick={() => handleOpenDialog()}
-                data-testid="button-new-aluguel"
+                data-testid="button-add-aluguel"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Aluguel
@@ -404,7 +404,7 @@ export default function Alugueis() {
                   </div>
                 )}
 
-                <div className="pt-3 border-t space-y-2">
+                <div className="pt-3 border-t space-y-2" data-testid={`status-control-aluguel-${aluguel.id}`}>
                   <PaymentStatusControl
                     recordId={aluguel.id}
                     currentStatus={aluguel.status as 'pendente' | 'pagamento_informado' | 'pago'}

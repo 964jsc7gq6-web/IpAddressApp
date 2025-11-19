@@ -214,7 +214,7 @@ export default function Parcelas() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setDialogOpen(true)} data-testid="button-new-parcela">
+            <Button onClick={() => setDialogOpen(true)} data-testid="button-add-parcela">
               <Plus className="w-4 h-4 mr-2" />
               Nova Parcela
             </Button>
@@ -417,7 +417,7 @@ export default function Parcelas() {
                   </div>
                 )}
 
-                <div className="pt-3 border-t space-y-2">
+                <div className="pt-3 border-t space-y-2" data-testid={`status-control-parcela-${parcela.id}`}>
                   <PaymentStatusControl
                     recordId={parcela.id}
                     currentStatus={parcela.status as "pendente" | "pagamento_informado" | "pago"}

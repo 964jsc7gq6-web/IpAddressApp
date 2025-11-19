@@ -241,7 +241,7 @@ export default function Condominios() {
             <DialogTrigger asChild>
               <Button
                 onClick={() => handleOpenDialog()}
-                data-testid="button-new-condominio"
+                data-testid="button-add-condominio"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Novo Condomínio
@@ -404,7 +404,7 @@ export default function Condominios() {
                   </div>
                 )}
 
-                <div className="pt-3 border-t space-y-2">
+                <div className="pt-3 border-t space-y-2" data-testid={`status-control-condominio-${condominio.id}`}>
                   <PaymentStatusControl
                     recordId={condominio.id}
                     currentStatus={condominio.status as 'pendente' | 'pagamento_informado' | 'pago'}
