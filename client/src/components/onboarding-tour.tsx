@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { createPortal } from "react-dom";
+import { useToast } from "@/hooks/use-toast";
 
 export interface TourStep {
   target: string;
@@ -22,19 +23,45 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
   const [currentStep, setCurrentStep] = useState(0);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [highlightPosition, setHighlightPosition] = useState({ top: 0, left: 0, width: 0, height: 0 });
+  const [elementFound, setElementFound] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
   const isFirstStep = currentStep === 0;
+  const maxRetries = 20;
 
   useEffect(() => {
     if (!isActive || !currentStepData) return;
 
-    const updatePosition = () => {
-      const targetElement = document.querySelector(currentStepData.target);
-      if (!targetElement) return;
+    setElementFound(false);
+    setRetryCount(0);
 
+    const tryFindElement = () => {
+      const targetElement = document.querySelector(currentStepData.target);
+      
+      if (!targetElement) {
+        if (retryCount < maxRetries) {
+          setRetryCount(prev => prev + 1);
+          setTimeout(tryFindElement, 200);
+        } else {
+          toast({
+            title: "Elemento não encontrado",
+            description: "Não foi possível encontrar o elemento para este passo. Certifique-se de que existem dados cadastrados.",
+            variant: "destructive",
+          });
+          onSkip();
+        }
+        return;
+      }
+
+      setElementFound(true);
+      updatePosition(targetElement);
+    };
+
+    const updatePosition = (targetElement: Element) => {
       const rect = targetElement.getBoundingClientRect();
       const scrollTop = window.scrollY;
       const scrollLeft = window.scrollX;
@@ -82,17 +109,25 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
       targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
-    updatePosition();
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition);
+    const handleResize = () => {
+      const targetElement = document.querySelector(currentStepData.target);
+      if (targetElement) {
+        updatePosition(targetElement);
+      }
+    };
+
+    tryFindElement();
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize);
 
     return () => {
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize);
     };
   }, [currentStep, currentStepData, isActive]);
 
-  if (!isActive || !currentStepData) return null;
+  if (!isActive || !currentStepData || !elementFound) return null;
 
   const handleNext = () => {
     if (isLastStep) {

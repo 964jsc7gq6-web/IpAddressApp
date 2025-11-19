@@ -24,19 +24,19 @@ const tourSteps: Record<PaymentType, TourStep[]> = {
       placement: "bottom",
     },
     {
-      target: '[data-testid="card-parcela-1"]',
+      target: '[data-testid^="card-parcela-"]',
       title: "Visualizar Parcela",
       content: "Aqui você vê os detalhes de cada parcela: número, valor, vencimento e status de pagamento.",
       placement: "right",
     },
     {
-      target: '[data-testid="status-control-parcela-1"]',
+      target: '[data-testid^="status-control-parcela-"]',
       title: "Controlar Pagamento",
       content: "Use este controle para marcar a parcela como Pendente, Paga (com comprovante) ou Recusada.",
       placement: "left",
     },
     {
-      target: '[data-testid="button-upload-comprovante-1"]',
+      target: '[data-testid^="button-upload-comprovante-"]',
       title: "Enviar Comprovante",
       content: "Após marcar como Paga, você pode fazer upload do comprovante de pagamento aqui.",
       placement: "top",
@@ -50,19 +50,19 @@ const tourSteps: Record<PaymentType, TourStep[]> = {
       placement: "bottom",
     },
     {
-      target: '[data-testid="card-aluguel-1"]',
+      target: '[data-testid^="card-aluguel-"]',
       title: "Visualizar Aluguel",
       content: "Cada card mostra os detalhes do aluguel do mês: mês/ano, valor e status.",
       placement: "right",
     },
     {
-      target: '[data-testid="status-control-aluguel-1"]',
+      target: '[data-testid^="status-control-aluguel-"]',
       title: "Controlar Pagamento",
       content: "Gerencie o status do aluguel: Pendente, Pago (com comprovante) ou Recusado.",
       placement: "left",
     },
     {
-      target: '[data-testid="button-upload-comprovante-aluguel-1"]',
+      target: '[data-testid^="button-upload-comprovante-"]',
       title: "Anexar Comprovante",
       content: "Anexe o comprovante de pagamento do aluguel após marcá-lo como Pago.",
       placement: "top",
@@ -76,19 +76,19 @@ const tourSteps: Record<PaymentType, TourStep[]> = {
       placement: "bottom",
     },
     {
-      target: '[data-testid="card-condominio-1"]',
+      target: '[data-testid^="card-condominio-"]',
       title: "Visualizar Condomínio",
       content: "Veja os detalhes da taxa de condomínio: mês/ano, valor e status de pagamento.",
       placement: "right",
     },
     {
-      target: '[data-testid="status-control-condominio-1"]',
+      target: '[data-testid^="status-control-condominio-"]',
       title: "Gerenciar Status",
       content: "Controle o status da taxa: Pendente, Paga (requer comprovante) ou Recusada.",
       placement: "left",
     },
     {
-      target: '[data-testid="button-upload-comprovante-condominio-1"]',
+      target: '[data-testid^="button-upload-comprovante-"]',
       title: "Comprovante de Pagamento",
       content: "Faça upload do comprovante após marcar a taxa como Paga.",
       placement: "top",
@@ -133,7 +133,7 @@ export function OnboardingAssistant() {
     
     setTimeout(() => {
       setTourActive(true);
-    }, 500);
+    }, 1000);
   };
 
   const handleTourComplete = () => {
