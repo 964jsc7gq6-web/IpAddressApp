@@ -31,10 +31,10 @@ function AppContent() {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center justify-between gap-4 border-b px-6 py-3 bg-background">
-            <div className="flex items-center gap-4">
+          <header className="flex items-center justify-between gap-2 sm:gap-4 border-b px-3 sm:px-6 py-3 bg-background">
+            <div className="flex items-center gap-2 sm:gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <h2 className="text-lg font-semibold">App Ipê</h2>
+              <h2 className="text-base sm:text-lg font-semibold">App Ipê</h2>
             </div>
             <OnboardingAssistant />
           </header>

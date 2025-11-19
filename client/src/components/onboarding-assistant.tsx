@@ -153,21 +153,21 @@ export function OnboardingAssistant() {
           <Button
             variant="default"
             size="default"
-            className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+            className="gap-1 sm:gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-3 sm:px-4"
             data-testid="button-assistant"
           >
-            <Sparkles className="h-4 w-4 animate-pulse" />
-            <span className="font-medium">Assistente IA</span>
+            <Sparkles className="h-4 w-4 animate-pulse shrink-0" />
+            <span className="font-medium text-sm sm:text-base">Assistente IA</span>
           </Button>
         </DialogTrigger>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-assistant">
+        <DialogContent className="max-w-[95vw] sm:max-w-md" data-testid="dialog-assistant">
           <DialogHeader>
-            <DialogTitle>Assistente de Uso</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">Assistente de Uso</DialogTitle>
+            <DialogDescription className="text-sm">
               Escolha qual tipo de pagamento você quer aprender a gerenciar
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-3 sm:gap-4 py-3 sm:py-4">
             {(Object.entries(paymentTypeLabels) as [PaymentType, typeof paymentTypeLabels[PaymentType]][]).map(
               ([type, { title, description, icon: Icon }]) => (
                 <Card

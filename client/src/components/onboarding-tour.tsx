@@ -74,9 +74,10 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
         height: rect.height,
       });
 
-      const tooltipWidth = 320;
+      const isMobile = window.innerWidth < 640;
+      const tooltipWidth = isMobile ? Math.min(280, window.innerWidth - 32) : 320;
       const tooltipHeight = 200;
-      const gap = 16;
+      const gap = isMobile ? 8 : 16;
 
       let top = 0;
       let left = 0;
@@ -93,12 +94,22 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
           left = rect.left + scrollLeft + rect.width / 2 - tooltipWidth / 2;
           break;
         case "left":
-          top = rect.top + scrollTop + rect.height / 2 - tooltipHeight / 2;
-          left = rect.left + scrollLeft - tooltipWidth - gap;
+          if (isMobile) {
+            top = rect.top + scrollTop + rect.height + gap;
+            left = rect.left + scrollLeft + rect.width / 2 - tooltipWidth / 2;
+          } else {
+            top = rect.top + scrollTop + rect.height / 2 - tooltipHeight / 2;
+            left = rect.left + scrollLeft - tooltipWidth - gap;
+          }
           break;
         case "right":
-          top = rect.top + scrollTop + rect.height / 2 - tooltipHeight / 2;
-          left = rect.left + scrollLeft + rect.width + gap;
+          if (isMobile) {
+            top = rect.top + scrollTop + rect.height + gap;
+            left = rect.left + scrollLeft + rect.width / 2 - tooltipWidth / 2;
+          } else {
+            top = rect.top + scrollTop + rect.height / 2 - tooltipHeight / 2;
+            left = rect.left + scrollLeft + rect.width + gap;
+          }
           break;
       }
 
@@ -164,16 +175,16 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
 
       <Card
         ref={tooltipRef}
-        className="fixed z-[10000] w-80 shadow-2xl"
+        className="fixed z-[10000] w-[calc(100vw-2rem)] max-w-[280px] sm:max-w-[320px] shadow-2xl"
         style={{
           top: tooltipPosition.top,
           left: tooltipPosition.left,
         }}
         data-testid="tour-tooltip"
       >
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2 sm:pb-3">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-base">{currentStepData.title}</CardTitle>
+            <CardTitle className="text-sm sm:text-base">{currentStepData.title}</CardTitle>
             <Button
               variant="ghost"
               size="icon"
@@ -181,35 +192,37 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
               onClick={onSkip}
               data-testid="button-tour-skip"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3 sm:h-4 sm:w-4" />
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="pb-3">
-          <p className="text-sm text-muted-foreground">{currentStepData.content}</p>
+        <CardContent className="pb-2 sm:pb-3">
+          <p className="text-xs sm:text-sm text-muted-foreground">{currentStepData.content}</p>
         </CardContent>
-        <CardFooter className="flex items-center justify-between gap-2 pt-3 border-t">
+        <CardFooter className="flex items-center justify-between gap-2 pt-2 sm:pt-3 border-t">
           <div className="text-xs text-muted-foreground">
             {currentStep + 1} de {steps.length}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={handlePrevious}
               disabled={isFirstStep}
               data-testid="button-tour-previous"
+              className="h-8 px-2 sm:px-3"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Anterior
+              <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Anterior</span>
             </Button>
             <Button
               size="sm"
               onClick={handleNext}
               data-testid="button-tour-next"
+              className="h-8 px-2 sm:px-3"
             >
-              {isLastStep ? "Concluir" : "Próximo"}
-              {!isLastStep && <ChevronRight className="h-4 w-4 ml-1" />}
+              <span className="text-xs sm:text-sm">{isLastStep ? "Concluir" : "Próximo"}</span>
+              {!isLastStep && <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 sm:ml-1" />}
             </Button>
           </div>
         </CardFooter>
