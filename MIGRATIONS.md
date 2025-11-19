@@ -17,9 +17,22 @@ Todos os comandos de migration requerem que a variável de ambiente `DATABASE_UR
 ```
 
 **Em produção (deploy):**
+
+Opção 1 - Exportar manualmente:
 ```bash
 # Configurar DATABASE_URL apontando para o banco de produção
 export DATABASE_URL="postgresql://usuario:senha@host:porta/database"
+```
+
+Opção 2 - Carregar do arquivo .env (RECOMENDADO):
+```bash
+# Carregar todas as variáveis do .env
+set -a  # exportar automaticamente todas as variáveis
+source .env
+set +a  # desativar exportação automática
+
+# Ou carregar apenas DATABASE_URL
+export $(grep DATABASE_URL .env | xargs)
 ```
 
 **Para múltiplos ambientes:**

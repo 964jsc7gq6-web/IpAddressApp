@@ -114,11 +114,18 @@ O parâmetro `--frozen-lockfile` garante que as versões exatas serão instalada
 ### 5. Aplicar Migrations do Banco de Dados
 
 ```bash
+# Carregar variáveis de ambiente do arquivo .env
+set -a
+source .env
+set +a
+
 # Aplicar todas as migrations
 pnpm drizzle-kit migrate
 ```
 
 Isso criará todas as tabelas necessárias no banco de dados.
+
+**Nota:** O comando `set -a; source .env; set +a` carrega todas as variáveis do arquivo `.env` e as exporta para o ambiente, permitindo que o Drizzle acesse o `DATABASE_URL`.
 
 ### 6. Build da Aplicação
 
