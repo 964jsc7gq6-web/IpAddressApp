@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,8 +24,8 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   const [highlightPosition, setHighlightPosition] = useState({ top: 0, left: 0, width: 0, height: 0 });
   const [elementFound, setElementFound] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const retryCountRef = useRef(0);
   const { toast } = useToast();
 
   const currentStepData = steps[currentStep];
@@ -37,14 +37,15 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
     if (!isActive || !currentStepData) return;
 
     setElementFound(false);
-    setRetryCount(0);
+    retryCountRef.current = 0;
 
     const tryFindElement = () => {
       const targetElement = document.querySelector(currentStepData.target);
       
       if (!targetElement) {
-        if (retryCount < maxRetries) {
-          setRetryCount(prev => prev + 1);
+        retryCountRef.current += 1;
+        
+        if (retryCountRef.current < maxRetries) {
           setTimeout(tryFindElement, 200);
         } else {
           toast({
@@ -125,7 +126,7 @@ export function OnboardingTour({ steps, isActive, onComplete, onSkip }: Onboardi
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("scroll", handleResize);
     };
-  }, [currentStep, currentStepData, isActive]);
+  }, [currentStep, currentStepData, isActive, onSkip, toast]);
 
   if (!isActive || !currentStepData || !elementFound) return null;
 

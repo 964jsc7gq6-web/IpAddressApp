@@ -9,7 +9,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { HelpCircle, CreditCard, Home, Building2 } from "lucide-react";
+import { Sparkles, CreditCard, Home, Building2 } from "lucide-react";
 import { OnboardingTour, type TourStep } from "./onboarding-tour";
 import { useLocation } from "wouter";
 
@@ -151,13 +151,13 @@ export function OnboardingAssistant() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
           <Button
-            variant="outline"
+            variant="default"
             size="default"
-            className="gap-2"
+            className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
             data-testid="button-assistant"
           >
-            <HelpCircle className="h-4 w-4" />
-            Assistente
+            <Sparkles className="h-4 w-4 animate-pulse" />
+            <span className="font-medium">Assistente IA</span>
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md" data-testid="dialog-assistant">

@@ -31,9 +31,12 @@ function AppContent() {
       <div className="flex h-screen w-full">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
-          <header className="flex items-center gap-4 border-b px-6 py-3 bg-background">
-            <SidebarTrigger data-testid="button-sidebar-toggle" />
-            <h2 className="text-lg font-semibold">App Ipê</h2>
+          <header className="flex items-center justify-between gap-4 border-b px-6 py-3 bg-background">
+            <div className="flex items-center gap-4">
+              <SidebarTrigger data-testid="button-sidebar-toggle" />
+              <h2 className="text-lg font-semibold">App Ipê</h2>
+            </div>
+            <OnboardingAssistant />
           </header>
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-7xl mx-auto">
@@ -51,7 +54,6 @@ function AppContent() {
           </main>
         </div>
       </div>
-      <OnboardingAssistant />
     </SidebarProvider>
   );
 }
