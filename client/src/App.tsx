@@ -18,6 +18,7 @@ import Parcelas from "@/pages/parcelas";
 import Alugueis from "@/pages/alugueis";
 import Condominios from "@/pages/condominios";
 import AlterarSenha from "@/pages/alterar-senha";
+import { OnboardingAssistant } from "@/components/onboarding-assistant";
 
 function AppContent() {
   const sidebarStyle = {
@@ -50,6 +51,7 @@ function AppContent() {
           </main>
         </div>
       </div>
+      <OnboardingAssistant />
     </SidebarProvider>
   );
 }
