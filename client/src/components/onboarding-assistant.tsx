@@ -187,7 +187,7 @@ export function OnboardingAssistant() {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        </Dialog>
+
         <DialogContent className="max-w-[95vw] sm:max-w-md" data-testid="dialog-assistant">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl">Assistente de Uso</DialogTitle>
@@ -222,6 +222,7 @@ export function OnboardingAssistant() {
             )}
           </div>
         </DialogContent>
+      </Dialog>
 
       {tourActive && selectedType && (
         <OnboardingTour
