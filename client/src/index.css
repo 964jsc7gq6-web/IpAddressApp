@@ -285,4 +285,45 @@
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
   }
+
+  /* AI Assistant Button Glow Effects */
+  @keyframes assistant-glow {
+    0% {
+      box-shadow: 
+        0 0 10px 2px rgba(124, 58, 255, 0.4),
+        0 0 20px 4px rgba(124, 58, 255, 0.2),
+        0 0 30px 6px rgba(99, 102, 241, 0.1);
+    }
+    50% {
+      box-shadow: 
+        0 0 15px 3px rgba(124, 58, 255, 0.6),
+        0 0 30px 6px rgba(124, 58, 255, 0.3),
+        0 0 45px 10px rgba(99, 102, 241, 0.15);
+    }
+    100% {
+      box-shadow: 
+        0 0 10px 2px rgba(124, 58, 255, 0.4),
+        0 0 20px 4px rgba(124, 58, 255, 0.2),
+        0 0 30px 6px rgba(99, 102, 241, 0.1);
+    }
+  }
+
+  @keyframes assistant-pulse-intense {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.85;
+      transform: scale(1.02);
+    }
+  }
+
+  .assistant-glow {
+    animation: assistant-glow 2.5s ease-in-out infinite;
+  }
+
+  .assistant-pulse-intense {
+    animation: assistant-pulse-intense 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
 }

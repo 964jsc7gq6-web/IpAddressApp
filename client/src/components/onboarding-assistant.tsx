@@ -153,7 +153,7 @@ export function OnboardingAssistant() {
           <Button
             variant="default"
             size="default"
-            className="gap-1 sm:gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-3 sm:px-4"
+            className="gap-1 sm:gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 px-3 sm:px-4 assistant-glow assistant-pulse-intense"
             data-testid="button-assistant"
           >
             <Sparkles className="h-4 w-4 animate-pulse shrink-0" />
