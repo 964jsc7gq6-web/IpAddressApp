@@ -326,4 +326,9 @@
   .assistant-pulse-intense {
     animation: assistant-pulse-intense 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+
+  /* Tooltip styling - no shadow */
+  .no-shadow {
+    box-shadow: none !important;
+  }
 }

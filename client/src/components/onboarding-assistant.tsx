@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -8,6 +8,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, CreditCard, Home, Building2 } from "lucide-react";
 import { OnboardingTour, type TourStep } from "./onboarding-tour";
@@ -124,7 +130,15 @@ export function OnboardingAssistant() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tourActive, setTourActive] = useState(false);
   const [selectedType, setSelectedType] = useState<PaymentType | null>(null);
+  const [tooltipOpen, setTooltipOpen] = useState(true);
   const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTooltipOpen(false);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSelectType = (type: PaymentType) => {
     setSelectedType(type);
@@ -149,17 +163,31 @@ export function OnboardingAssistant() {
   return (
     <>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger asChild>
-          <Button
-            variant="default"
-            size="default"
-            className="gap-1 sm:gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 px-3 sm:px-4 assistant-glow assistant-pulse-intense"
-            data-testid="button-assistant"
-          >
-            <Sparkles className="h-4 w-4 animate-pulse shrink-0" />
-            <span className="font-medium text-sm sm:text-base">Assistente IA</span>
-          </Button>
-        </DialogTrigger>
+        <TooltipProvider delayDuration={0}>
+          <Tooltip open={tooltipOpen} onOpenChange={setTooltipOpen}>
+            <TooltipTrigger asChild>
+              <DialogTrigger asChild>
+                <Button
+                  variant="default"
+                  size="default"
+                  className="gap-1 sm:gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0 px-3 sm:px-4 assistant-glow assistant-pulse-intense"
+                  data-testid="button-assistant"
+                >
+                  <Sparkles className="h-4 w-4 animate-pulse shrink-0" />
+                  <span className="font-medium text-sm sm:text-base">Assistente IA</span>
+                </Button>
+              </DialogTrigger>
+            </TooltipTrigger>
+            <TooltipContent 
+              side="bottom" 
+              className="bg-violet-950/95 text-white border-0 no-shadow"
+              data-testid="tooltip-assistant"
+            >
+              <p className="text-sm font-medium">Aprenda a usar o app com nosso assistente guiado!</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        </Dialog>
         <DialogContent className="max-w-[95vw] sm:max-w-md" data-testid="dialog-assistant">
           <DialogHeader>
             <DialogTitle className="text-lg sm:text-xl">Assistente de Uso</DialogTitle>
@@ -194,7 +222,6 @@ export function OnboardingAssistant() {
             )}
           </div>
         </DialogContent>
-      </Dialog>
 
       {tourActive && selectedType && (
         <OnboardingTour
